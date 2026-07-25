@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  WON
+  LOST
+}
+
+enum UserRole {
+  ADMIN
+  SALES_REP
+}
+
+model User {
+  id        String   @id
+  email     String   @unique
+  name      String
+  role      UserRole @default(SALES_REP)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads   Lead[]
+  payouts Payout[]
+}
+
+model Lead {
+  id             String     @id @default(cuid())
+  name           String
+  company        String
+  email          String?
+  phone          String?
+  mobile         String?
+  website        String?
+  address        String?
+  city           String?
+  state          String?
+  zipCode        String?
+  country        String?
+  industry       String?
+  value          Decimal    @default(0) @db.Decimal(12, 2)
+  status         LeadStatus @default(NEW)
+  source         String?
+  notes          String?
+  assignedRepId  String
+  assignedRep    User       @relation(fields: [assignedRepId], references: [id])
+  zohoLeadId     String?    @unique
+  zohoSyncedAt   DateTime?
+  zohoSyncStatus String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([assignedRepId])
+  @@index([status])
+  @@index([zohoLeadId])
+}
+
+model Payout {
+  id          String   @id @default(cuid())
+  repId       String
+  rep         User     @relation(fields: [repId], references: [id])
+  amount      Decimal  @db.Decimal(10, 2)
+  date        DateTime
+  description String
+  createdAt   DateTime @default(now())
+
+  @@index([repId])
+}
+
+model ZohoToken {
+  id           Int      @id @default(1)
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  updatedAt    DateTime @updatedAt
+}
