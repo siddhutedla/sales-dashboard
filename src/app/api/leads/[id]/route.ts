@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { AuthError, requireUser } from "@/lib/auth";
 import { syncLeadToZoho } from "@/lib/zoho/sync";
 import { zohoClient } from "@/lib/zoho/client";
 
@@ -10,17 +10,14 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const userId = request.headers.get("x-user-id");
-    if (!userId) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-
-    const user = await getCurrentUser(userId);
+    const user = await requireUser();
     const lead = await prisma.lead.findUnique({
       where: { id },
       include: { assignedRep: true },
     });
 
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
-    if (user.role === "SALES_REP" && lead.assignedRepId !== userId) {
+    if (user.role === "SALES_REP" && lead.assignedRepId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -29,6 +26,9 @@ export async function GET(
       value: lead.value.toNumber(),
     });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Get lead error:", error);
     return NextResponse.json({ error: "Failed to fetch lead" }, { status: 500 });
   }
@@ -40,14 +40,11 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
-    const userId = request.headers.get("x-user-id");
-    if (!userId) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-
-    const user = await getCurrentUser(userId);
+    const user = await requireUser();
     const existingLead = await prisma.lead.findUnique({ where: { id } });
 
     if (!existingLead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
-    if (user.role === "SALES_REP" && existingLead.assignedRepId !== userId) {
+    if (user.role === "SALES_REP" && existingLead.assignedRepId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -83,6 +80,9 @@ export async function PATCH(
       value: lead.value.toNumber(),
     });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Update lead error:", error);
     return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
   }
@@ -94,14 +94,11 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    const userId = request.headers.get("x-user-id");
-    if (!userId) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-
-    const user = await getCurrentUser(userId);
+    const user = await requireUser();
     const lead = await prisma.lead.findUnique({ where: { id } });
 
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
-    if (user.role === "SALES_REP" && lead.assignedRepId !== userId) {
+    if (user.role === "SALES_REP" && lead.assignedRepId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -118,6 +115,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Delete lead error:", error);
     return NextResponse.json({ error: "Failed to delete lead" }, { status: 500 });
   }

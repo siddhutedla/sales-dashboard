@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { AuthError, requireUser } from "@/lib/auth";
 
 // @ts-ignore
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get("x-user-id");
-    if (!userId) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-
-    const user = await getCurrentUser(userId);
+    const user = await requireUser();
     const repId = request.nextUrl.searchParams.get("repId");
 
     const where =
       user.role === "SALES_REP"
-        ? { assignedRepId: userId }
+        ? { assignedRepId: user.id }
         : repId
           ? { assignedRepId: repId }
           : {};
@@ -91,6 +88,9 @@ export async function GET(request: NextRequest) {
       repBreakdown,
     });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Get stats error:", error);
     return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
   }

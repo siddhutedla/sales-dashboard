@@ -14,27 +14,35 @@ enum LeadStatus {
   PROPOSAL
   WON
   LOST
+
+  @@map("lead_status")
 }
 
 enum UserRole {
   ADMIN
   SALES_REP
+
+  @@map("user_role")
 }
 
+// Mirrors auth.users (id is a Supabase Auth user id); rows are created by the
+// handle_new_user trigger on signup, never inserted directly by the app.
 model User {
-  id        String   @id
+  id        String   @id @db.Uuid
   email     String   @unique
   name      String
   role      UserRole @default(SALES_REP)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   leads   Lead[]
   payouts Payout[]
+
+  @@map("users")
 }
 
 model Lead {
-  id             String     @id @default(cuid())
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name           String
   company        String
   email          String?
@@ -44,42 +52,46 @@ model Lead {
   address        String?
   city           String?
   state          String?
-  zipCode        String?
+  zipCode        String?    @map("zip_code")
   country        String?
   industry       String?
   value          Decimal    @default(0) @db.Decimal(12, 2)
   status         LeadStatus @default(NEW)
   source         String?
   notes          String?
-  assignedRepId  String
+  assignedRepId  String     @map("assigned_rep_id") @db.Uuid
   assignedRep    User       @relation(fields: [assignedRepId], references: [id])
-  zohoLeadId     String?    @unique
-  zohoSyncedAt   DateTime?
-  zohoSyncStatus String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  zohoLeadId     String?    @unique @map("zoho_lead_id")
+  zohoSyncedAt   DateTime?  @map("zoho_synced_at")
+  zohoSyncStatus String?    @map("zoho_sync_status")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
 
   @@index([assignedRepId])
   @@index([status])
   @@index([zohoLeadId])
+  @@map("leads")
 }
 
 model Payout {
-  id          String   @id @default(cuid())
-  repId       String
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  repId       String   @map("rep_id") @db.Uuid
   rep         User     @relation(fields: [repId], references: [id])
   amount      Decimal  @db.Decimal(10, 2)
   date        DateTime
   description String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([repId])
+  @@map("payouts")
 }
 
 model ZohoToken {
   id           Int      @id @default(1)
-  accessToken  String
-  refreshToken String
-  expiresAt    DateTime
-  updatedAt    DateTime @updatedAt
+  accessToken  String   @map("access_token")
+  refreshToken String   @map("refresh_token")
+  expiresAt    DateTime @map("expires_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("zoho_tokens")
 }

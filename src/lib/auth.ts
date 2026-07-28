@@ -1,14 +1,33 @@
+import "server-only";
 import { prisma } from "./prisma";
+import { createClient } from "./supabase/server";
 
-export async function requireRole(userId: string, allowedRoles: string[]) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new Error("User not found");
-  if (!allowedRoles.includes(user.role)) throw new Error("Forbidden");
+export class AuthError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export async function getCurrentUser() {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) return null;
+
+  return prisma.user.findUnique({ where: { id: authUser.id } });
+}
+
+export async function requireUser() {
+  const user = await getCurrentUser();
+  if (!user) throw new AuthError("Unauthenticated", 401);
   return user;
 }
 
-export async function getCurrentUser(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new Error("User not found");
+export async function requireRole(allowedRoles: string[]) {
+  const user = await requireUser();
+  if (!allowedRoles.includes(user.role)) throw new AuthError("Forbidden", 403);
   return user;
 }

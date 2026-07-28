@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, requireRole } from "@/lib/auth";
+import { AuthError, requireRole, requireUser } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.headers.get("x-user-id");
-    if (!userId) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-
-    const user = await getCurrentUser(userId);
+    const user = await requireUser();
     const repId = request.nextUrl.searchParams.get("repId");
 
     const where: any = {};
     if (user.role === "SALES_REP") {
-      where.repId = userId;
+      where.repId = user.id;
     } else if (repId) {
       where.repId = repId;
     }
@@ -31,6 +28,9 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Get payouts error:", error);
     return NextResponse.json({ error: "Failed to fetch payouts" }, { status: 500 });
   }
@@ -38,13 +38,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get("x-user-id");
-    if (!userId) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
-
-    const user = await getCurrentUser(userId);
-    if (user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    await requireRole(["ADMIN"]);
 
     const body = await request.json();
     const payout = await prisma.payout.create({
@@ -62,6 +56,9 @@ export async function POST(request: NextRequest) {
       amount: payout.amount.toNumber(),
     });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Create payout error:", error);
     return NextResponse.json({ error: "Failed to create payout" }, { status: 500 });
   }
