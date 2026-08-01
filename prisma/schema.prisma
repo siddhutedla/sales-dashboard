@@ -37,6 +37,7 @@ model User {
 
   leads   Lead[]
   payouts Payout[]
+  w9Form  W9Form?
 
   @@map("users")
 }
@@ -67,10 +68,35 @@ model Lead {
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
 
+  order          Order?
+
   @@index([assignedRepId])
   @@index([status])
   @@index([zohoLeadId])
   @@map("leads")
+}
+
+// Auto-created (via the on_lead_won trigger) the moment a Lead's status
+// flips to WON; tracks fulfillment through the print vendor (Inksoft).
+model Order {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  leadId                 String    @unique @map("lead_id") @db.Uuid
+  lead                   Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  inksoftOrderNumber     String?   @map("inksoft_order_number")
+  emailSentAt            DateTime? @map("email_sent_at")
+  blanksShippedAt        DateTime? @map("blanks_shipped_at")
+  mockupApprovedAt       DateTime? @map("mockup_approved_at")
+  paymentSentToPrinterAt DateTime? @map("payment_sent_to_printer_at")
+  orderShippedAt         DateTime? @map("order_shipped_at")
+  trackingNumber         String?   @map("tracking_number")
+  itemsReceivedAt        DateTime? @map("items_received_at")
+  redAlert               Boolean   @default(false) @map("red_alert")
+  redAlertNote           String?   @map("red_alert_note")
+  stuckInDelivery        Boolean   @default(false) @map("stuck_in_delivery")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  @@map("orders")
 }
 
 model Payout {
@@ -94,4 +120,39 @@ model ZohoToken {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("zoho_tokens")
+}
+
+// TIN is stored encrypted (see src/lib/tax/crypto.ts) - tinLast4 is plaintext
+// purely for display ("on file, ending in 1234").
+model W9Form {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String   @unique @map("user_id") @db.Uuid
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalName         String   @map("legal_name")
+  businessName      String?  @map("business_name")
+  taxClassification String   @map("tax_classification")
+  tinEncrypted      String   @map("tin_encrypted")
+  tinLast4          String   @map("tin_last4")
+  address           String
+  city              String
+  state             String
+  zipCode           String   @map("zip_code")
+  submittedAt       DateTime @default(now()) @map("submitted_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("w9_forms")
+}
+
+// Singleton row: the payer info that goes on every generated 1099-NEC.
+model CompanySettings {
+  id        Int      @id @default(1)
+  legalName String   @default("Golden Printing Solutions") @map("legal_name")
+  ein       String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?  @map("zip_code")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("company_settings")
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { redirect } from "next/navigation";
 import { prisma } from "./prisma";
 import { createClient } from "./supabase/server";
 
@@ -29,5 +30,14 @@ export async function requireUser() {
 export async function requireRole(allowedRoles: string[]) {
   const user = await requireUser();
   if (!allowedRoles.includes(user.role)) throw new AuthError("Forbidden", 403);
+  return user;
+}
+
+// For Server Component pages (not API routes) - redirects instead of
+// throwing, since an uncaught AuthError there just renders a raw error page.
+export async function requireRolePage(allowedRoles: string[]) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!allowedRoles.includes(user.role)) redirect("/dashboard");
   return user;
 }

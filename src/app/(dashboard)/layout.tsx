@@ -22,12 +22,15 @@ export default async function DashboardLayout({
           <a href="/payouts" className="block px-4 py-2 rounded hover:bg-gray-700">
             Payouts
           </a>
+          <a href="/orders" className="block px-4 py-2 rounded hover:bg-gray-700">
+            📦 Orders
+          </a>
+          <a href="/tax" className="block px-4 py-2 rounded hover:bg-gray-700">
+            🧾 Tax Documents
+          </a>
           <hr className="my-4" />
           <a href="/email" className="block px-4 py-2 rounded hover:bg-gray-700 opacity-60">
             📧 Email (Soon)
-          </a>
-          <a href="/orders" className="block px-4 py-2 rounded hover:bg-gray-700 opacity-60">
-            📦 Orders (Soon)
           </a>
           <hr className="my-4" />
           <a href="/admin/users" className="block px-4 py-2 rounded hover:bg-gray-700">
@@ -35,6 +38,9 @@ export default async function DashboardLayout({
           </a>
           <a href="/admin/sync" className="block px-4 py-2 rounded hover:bg-gray-700">
             🔄 Admin: Zoho Sync
+          </a>
+          <a href="/admin/tax-settings" className="block px-4 py-2 rounded hover:bg-gray-700">
+            🧾 Admin: Tax Settings
           </a>
         </nav>
         <div className="border-t border-gray-700 pt-4 mt-4">
