@@ -1,7 +1,21 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "./supabase/server";
+
+// Derived from the actual incoming request rather than NEXT_PUBLIC_APP_URL,
+// so this is correct on every environment (prod, each Vercel preview URL,
+// local dev) without needing to keep an env var in sync with each one.
+// Supabase's dashboard must still allow this origin under Authentication ->
+// URL Configuration -> Redirect URLs, or it'll silently fall back to the
+// project's default Site URL instead.
+async function getOrigin() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const protocol = h.get("x-forwarded-proto") ?? "https";
+  return host ? `${protocol}://${host}` : process.env.NEXT_PUBLIC_APP_URL;
+}
 
 export async function signInAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
@@ -33,7 +47,7 @@ export async function signUpAction(formData: FormData) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name, organization } },
+    options: { data: { name, organization }, emailRedirectTo: `${await getOrigin()}/login` },
   });
 
   if (error) {
