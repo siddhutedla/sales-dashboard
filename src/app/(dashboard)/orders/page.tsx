@@ -193,9 +193,12 @@ export default async function OrdersPage() {
               <div className="mt-4 pt-4 border-t-2 border-ink/10">
                 {order.lead.payouts.length > 0 && (
                   <p className="text-xs text-ink-muted mb-2">
-                    Already paid on this deal:{" "}
+                    Commission on this deal:{" "}
                     {order.lead.payouts
-                      .map((p) => `${formatMoney(p.amount.toNumber())} (${p.date.toLocaleDateString("en-US")})`)
+                      .map(
+                        (p) =>
+                          `${formatMoney(p.amount.toNumber())} (${p.status === "PAID" ? "paid" : "pending"})`
+                      )
                       .join(", ")}
                   </p>
                 )}

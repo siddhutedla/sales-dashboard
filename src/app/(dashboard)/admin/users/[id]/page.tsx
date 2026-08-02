@@ -4,7 +4,11 @@ import { requireRolePage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { decryptTin } from "@/lib/tax/crypto";
 import { formatTin } from "@/lib/tax/format";
-import { createPayoutAction, updateRepWageAction } from "@/lib/payout-actions";
+import {
+  createPayoutAction,
+  togglePayoutStatusAction,
+  updateRepWageAction,
+} from "@/lib/payout-actions";
 
 const PAYOUT_TYPE_LABELS: Record<string, string> = {
   BONUS: "Bonus",
@@ -57,7 +61,12 @@ export default async function RepDetailPage({
   const payoutYears = Array.from(new Set(rep.payouts.map((p) => p.date.getFullYear()))).sort(
     (a, b) => b - a
   );
-  const totalPaid = rep.payouts.reduce((sum, p) => sum + p.amount.toNumber(), 0);
+  const totalPaid = rep.payouts
+    .filter((p) => p.status === "PAID")
+    .reduce((sum, p) => sum + p.amount.toNumber(), 0);
+  const totalPending = rep.payouts
+    .filter((p) => p.status === "PENDING")
+    .reduce((sum, p) => sum + p.amount.toNumber(), 0);
 
   return (
     <div className="p-8 max-w-3xl space-y-6">
@@ -261,9 +270,16 @@ export default async function RepDetailPage({
       </div>
 
       <div className="gp-card p-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center flex-wrap gap-2">
           <h2 className="font-extrabold">Payout history</h2>
-          <span className="text-sm font-bold">{formatMoney(totalPaid)} total</span>
+          <span className="text-sm">
+            <span className="font-bold">{formatMoney(totalPaid)} paid</span>
+            {totalPending > 0 && (
+              <span className="text-gold-dark font-medium ml-2">
+                {formatMoney(totalPending)} pending
+              </span>
+            )}
+          </span>
         </div>
         {rep.payouts.length === 0 ? (
           <p className="text-sm text-ink-muted mt-2">No payouts recorded yet.</p>
@@ -282,7 +298,19 @@ export default async function RepDetailPage({
                   <span className="gp-badge gp-badge-neutral">
                     {PAYOUT_TYPE_LABELS[p.type] ?? p.type}
                   </span>
-                  <span className="font-bold">{formatMoney(p.amount.toNumber())}</span>
+                  <span
+                    className={`gp-badge ${p.status === "PAID" ? "gp-badge-mint" : "gp-badge-gold"}`}
+                  >
+                    {p.status === "PAID" ? "Paid" : "Pending"}
+                  </span>
+                  <span className="font-bold w-20 text-right">
+                    {formatMoney(p.amount.toNumber())}
+                  </span>
+                  <form action={togglePayoutStatusAction.bind(null, p.id)}>
+                    <button type="submit" className="gp-btn gp-btn-secondary gp-btn-sm">
+                      {p.status === "PAID" ? "Mark pending" : "Mark paid"}
+                    </button>
+                  </form>
                 </div>
               </li>
             ))}

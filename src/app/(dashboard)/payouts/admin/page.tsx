@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRolePage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { togglePayoutStatusAction } from "@/lib/payout-actions";
 
 const PAYOUT_TYPE_LABELS: Record<string, string> = {
   BONUS: "Bonus",
@@ -22,12 +23,17 @@ export default async function AdminPayoutsPage() {
       include: { rep: { select: { id: true, name: true } }, lead: { select: { company: true } } },
     }),
     prisma.user.findMany({
-      include: { payouts: { select: { amount: true } } },
+      include: { payouts: { select: { amount: true, status: true } } },
       orderBy: { name: "asc" },
     }),
   ]);
 
-  const grandTotal = payouts.reduce((sum, p) => sum + p.amount.toNumber(), 0);
+  const grandTotalPaid = payouts
+    .filter((p) => p.status === "PAID")
+    .reduce((sum, p) => sum + p.amount.toNumber(), 0);
+  const grandTotalPending = payouts
+    .filter((p) => p.status === "PENDING")
+    .reduce((sum, p) => sum + p.amount.toNumber(), 0);
 
   return (
     <div className="p-8">
@@ -40,7 +46,12 @@ export default async function AdminPayoutsPage() {
         <h2 className="font-extrabold">Totals by rep</h2>
         <ul className="mt-3 divide-y divide-ink/10">
           {reps.map((r) => {
-            const repTotal = r.payouts.reduce((sum, p) => sum + p.amount.toNumber(), 0);
+            const repPaid = r.payouts
+              .filter((p) => p.status === "PAID")
+              .reduce((sum, p) => sum + p.amount.toNumber(), 0);
+            const repPending = r.payouts
+              .filter((p) => p.status === "PENDING")
+              .reduce((sum, p) => sum + p.amount.toNumber(), 0);
             return (
               <li key={r.id} className="flex justify-between items-center py-2">
                 <Link
@@ -49,7 +60,14 @@ export default async function AdminPayoutsPage() {
                 >
                   {r.name}
                 </Link>
-                <span className="font-bold">{formatMoney(repTotal)}</span>
+                <span className="text-sm">
+                  <span className="font-bold">{formatMoney(repPaid)} paid</span>
+                  {repPending > 0 && (
+                    <span className="text-gold-dark font-medium ml-2">
+                      {formatMoney(repPending)} pending
+                    </span>
+                  )}
+                </span>
               </li>
             );
           })}
@@ -57,9 +75,16 @@ export default async function AdminPayoutsPage() {
       </div>
 
       <div className="gp-card mt-6 overflow-x-auto">
-        <div className="flex justify-between items-center px-4 pt-4">
+        <div className="flex justify-between items-center px-4 pt-4 flex-wrap gap-2">
           <h2 className="font-extrabold">All payouts</h2>
-          <span className="text-sm font-bold">{formatMoney(grandTotal)} total</span>
+          <span className="text-sm">
+            <span className="font-bold">{formatMoney(grandTotalPaid)} paid</span>
+            {grandTotalPending > 0 && (
+              <span className="text-gold-dark font-medium ml-2">
+                {formatMoney(grandTotalPending)} pending
+              </span>
+            )}
+          </span>
         </div>
         {payouts.length === 0 ? (
           <p className="text-sm text-ink-muted p-4">No payouts recorded yet.</p>
@@ -71,7 +96,9 @@ export default async function AdminPayoutsPage() {
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Description</th>
+                <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Amount</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -95,7 +122,21 @@ export default async function AdminPayoutsPage() {
                     {p.description}
                     {p.lead && <span className="text-ink-muted"> · {p.lead.company}</span>}
                   </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`gp-badge ${p.status === "PAID" ? "gp-badge-mint" : "gp-badge-gold"}`}
+                    >
+                      {p.status === "PAID" ? "Paid" : "Pending"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 font-bold">{formatMoney(p.amount.toNumber())}</td>
+                  <td className="px-4 py-3">
+                    <form action={togglePayoutStatusAction.bind(null, p.id)}>
+                      <button type="submit" className="gp-btn gp-btn-secondary gp-btn-sm">
+                        {p.status === "PAID" ? "Mark pending" : "Mark paid"}
+                      </button>
+                    </form>
+                  </td>
                 </tr>
               ))}
             </tbody>

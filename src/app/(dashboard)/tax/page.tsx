@@ -18,13 +18,19 @@ export default async function TaxPage() {
 
   const [w9, payouts] = await Promise.all([
     prisma.w9Form.findUnique({ where: { userId: user.id } }),
-    prisma.payout.findMany({ where: { repId: user.id }, select: { amount: true, date: true } }),
+    prisma.payout.findMany({
+      where: { repId: user.id },
+      select: { amount: true, date: true, status: true },
+    }),
   ]);
 
-  const totalsByYear = new Map<number, number>();
+  const totalsByYear = new Map<number, { paid: number; pending: number }>();
   for (const p of payouts) {
     const year = p.date.getFullYear();
-    totalsByYear.set(year, (totalsByYear.get(year) ?? 0) + p.amount.toNumber());
+    const entry = totalsByYear.get(year) ?? { paid: 0, pending: 0 };
+    if (p.status === "PAID") entry.paid += p.amount.toNumber();
+    else entry.pending += p.amount.toNumber();
+    totalsByYear.set(year, entry);
   }
   const years = Array.from(totalsByYear.keys()).sort((a, b) => b - a);
 
@@ -41,26 +47,37 @@ export default async function TaxPage() {
           <p className="text-sm text-ink-muted mt-2">No confirmed payouts yet.</p>
         ) : (
           <ul className="mt-3 divide-y divide-ink/10">
-            {years.map((year) => (
-              <li key={year} className="flex justify-between items-center py-2.5 gap-4">
-                <span className="text-sm text-ink-muted w-16">{year}</span>
-                <span className="font-bold flex-1">
-                  ${totalsByYear.get(year)!.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                </span>
-                {w9 ? (
-                  <a
-                    href={`/api/tax/1099/${user.id}/${year}`}
-                    className="gp-btn gp-btn-secondary gp-btn-sm whitespace-nowrap"
-                  >
-                    Download 1099-NEC
-                  </a>
-                ) : (
-                  <span className="text-sm text-ink-muted whitespace-nowrap">
-                    Submit your W-9
+            {years.map((year) => {
+              const { paid, pending } = totalsByYear.get(year)!;
+              return (
+                <li key={year} className="flex justify-between items-center py-2.5 gap-4">
+                  <span className="text-sm text-ink-muted w-16">{year}</span>
+                  <span className="flex-1">
+                    <span className="font-bold">
+                      $
+                      {paid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
+                    {pending > 0 && (
+                      <span className="text-xs text-gold-dark font-medium ml-2">
+                        + ${pending.toLocaleString("en-US", { minimumFractionDigits: 2 })} pending
+                      </span>
+                    )}
                   </span>
-                )}
-              </li>
-            ))}
+                  {w9 ? (
+                    <a
+                      href={`/api/tax/1099/${user.id}/${year}`}
+                      className="gp-btn gp-btn-secondary gp-btn-sm whitespace-nowrap"
+                    >
+                      Download 1099-NEC
+                    </a>
+                  ) : (
+                    <span className="text-sm text-ink-muted whitespace-nowrap">
+                      Submit your W-9
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
         <p className="text-xs text-ink-muted mt-4">

@@ -22,7 +22,12 @@ export default async function PayoutsPage() {
     include: { lead: { select: { company: true } } },
   });
 
-  const total = payouts.reduce((sum, p) => sum + p.amount.toNumber(), 0);
+  const totalPaid = payouts
+    .filter((p) => p.status === "PAID")
+    .reduce((sum, p) => sum + p.amount.toNumber(), 0);
+  const totalPending = payouts
+    .filter((p) => p.status === "PENDING")
+    .reduce((sum, p) => sum + p.amount.toNumber(), 0);
 
   return (
     <div className="p-8 max-w-2xl">
@@ -30,9 +35,16 @@ export default async function PayoutsPage() {
       <p className="text-ink-muted mt-2">Everything you&apos;ve been paid, most recent first.</p>
 
       <div className="gp-card mt-6 p-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center flex-wrap gap-2">
           <h2 className="font-extrabold">History</h2>
-          <span className="text-sm font-bold">{formatMoney(total)} total</span>
+          <span className="text-sm">
+            <span className="font-bold">{formatMoney(totalPaid)} paid</span>
+            {totalPending > 0 && (
+              <span className="text-gold-dark font-medium ml-2">
+                {formatMoney(totalPending)} pending
+              </span>
+            )}
+          </span>
         </div>
 
         {payouts.length === 0 ? (
@@ -51,6 +63,11 @@ export default async function PayoutsPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="gp-badge gp-badge-neutral">
                     {PAYOUT_TYPE_LABELS[p.type] ?? p.type}
+                  </span>
+                  <span
+                    className={`gp-badge ${p.status === "PAID" ? "gp-badge-mint" : "gp-badge-gold"}`}
+                  >
+                    {p.status === "PAID" ? "Paid" : "Pending"}
                   </span>
                   <span className="font-bold">{formatMoney(p.amount.toNumber())}</span>
                 </div>

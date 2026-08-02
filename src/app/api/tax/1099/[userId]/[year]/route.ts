@@ -29,6 +29,7 @@ export async function GET(
       prisma.payout.findMany({
         where: {
           repId: userId,
+          status: "PAID",
           date: {
             gte: new Date(`${year}-01-01T00:00:00Z`),
             lt: new Date(`${year + 1}-01-01T00:00:00Z`),

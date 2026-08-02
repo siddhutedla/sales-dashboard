@@ -42,6 +42,28 @@ export async function createPayoutAction(formData: FormData) {
   revalidatePath("/orders");
 }
 
+export async function togglePayoutStatusAction(payoutId: string) {
+  await requireRole(["ADMIN"]);
+
+  const payout = await prisma.payout.findUnique({ where: { id: payoutId } });
+  if (!payout) throw new Error("Payout not found");
+
+  const isPaid = payout.status === "PAID";
+  await prisma.payout.update({
+    where: { id: payoutId },
+    data: {
+      status: isPaid ? "PENDING" : "PAID",
+      paidAt: isPaid ? null : new Date(),
+    },
+  });
+
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${payout.repId}`);
+  revalidatePath("/payouts/admin");
+  revalidatePath("/payouts");
+  revalidatePath("/orders");
+}
+
 export async function updateRepWageAction(formData: FormData) {
   await requireRole(["ADMIN"]);
 
