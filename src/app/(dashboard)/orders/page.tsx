@@ -34,48 +34,49 @@ export default async function OrdersPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold">Orders</h1>
-      <p className="text-gray-600 mt-2">
+      <h1 className="text-3xl font-extrabold">Orders</h1>
+      <p className="text-ink-muted mt-2">
         Fulfillment tracking for won deals. An order shows up here automatically once a lead is
         marked Won.
       </p>
 
       {orders.length === 0 && (
-        <p className="text-gray-500 mt-8">No orders yet - they appear here as leads are won.</p>
+        <div className="gp-card p-8 mt-8 text-center">
+          <p className="text-4xl mb-2">📦</p>
+          <p className="font-bold">No orders yet</p>
+          <p className="text-sm text-ink-muted mt-1">They appear here as leads are won.</p>
+        </div>
       )}
 
       <div className="mt-6 space-y-6">
         {orders.map((order) => (
-          <div key={order.id} className="bg-white rounded shadow-sm p-6">
+          <div key={order.id} className="gp-card p-6">
             <div className="flex justify-between items-start flex-wrap gap-2">
               <div>
-                <h2 className="text-lg font-semibold">{order.lead.company}</h2>
-                <p className="text-sm text-gray-500">
+                <h2 className="text-lg font-extrabold">{order.lead.company}</h2>
+                <p className="text-sm text-ink-muted">
                   {order.lead.name}
                   {user.role === "ADMIN" && ` · ${order.lead.assignedRep.name}`}
                 </p>
               </div>
               <div className="flex gap-2">
-                {order.redAlert && (
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
-                    Red Alert
-                  </span>
-                )}
+                {order.redAlert && <span className="gp-badge gp-badge-coral">Red Alert</span>}
                 {order.stuckInDelivery && (
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
-                    Stuck in delivery
-                  </span>
+                  <span className="gp-badge gp-badge-gold">Stuck in delivery</span>
                 )}
               </div>
             </div>
 
             {order.redAlert && (
-              <div className="mt-4 bg-red-50 border border-red-200 rounded p-3 flex justify-between items-start gap-4">
-                <p className="text-sm text-red-800">
+              <div className="mt-4 bg-coral/10 border-2 border-coral rounded-xl p-3 flex justify-between items-start gap-4">
+                <p className="text-sm text-coral-dark font-medium">
                   {order.redAlertNote || "Flagged as a red alert - needs attention."}
                 </p>
                 <form action={clearRedAlertAction.bind(null, order.id)}>
-                  <button type="submit" className="text-sm text-red-700 hover:underline whitespace-nowrap">
+                  <button
+                    type="submit"
+                    className="text-sm font-semibold text-coral-dark hover:underline whitespace-nowrap"
+                  >
                     Clear
                   </button>
                 </form>
@@ -88,55 +89,54 @@ export default async function OrdersPage() {
             >
               <input type="hidden" name="orderId" value={order.id} />
               <div>
-                <label className="block text-xs font-medium text-gray-500">
-                  Inksoft Order Number
-                </label>
+                <label className="gp-label">Inksoft Order Number</label>
                 <input
                   type="text"
                   name="inksoftOrderNumber"
                   defaultValue={order.inksoftOrderNumber ?? ""}
-                  className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                  className="gp-input"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500">Tracking Number</label>
+                <label className="gp-label">Tracking Number</label>
                 <input
                   type="text"
                   name="trackingNumber"
                   defaultValue={order.trackingNumber ?? ""}
-                  className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                  className="gp-input"
                 />
               </div>
               <div className="sm:col-span-2">
-                <button
-                  type="submit"
-                  className="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded"
-                >
+                <button type="submit" className="gp-btn gp-btn-secondary gp-btn-sm">
                   Save
                 </button>
               </div>
             </form>
 
-            <ul className="mt-4 divide-y divide-gray-100">
+            <ul className="mt-4 divide-y divide-ink/10">
               {MILESTONES.map(({ field, label, optional }) => {
                 const doneAt = order[field] as Date | null;
                 return (
-                  <li key={field} className="flex justify-between items-center py-2">
+                  <li key={field} className="flex justify-between items-center py-2.5">
                     <div>
-                      <span className="text-sm">{label}</span>
-                      {optional && <span className="ml-2 text-xs text-gray-400">(optional)</span>}
+                      <span className="text-sm font-medium">{label}</span>
+                      {optional && (
+                        <span className="ml-2 text-xs text-ink-muted">(optional)</span>
+                      )}
                       {doneAt && (
-                        <span className="ml-2 text-xs text-green-700">{formatDate(doneAt)}</span>
+                        <span className="ml-2 text-xs text-mint-dark font-medium">
+                          {formatDate(doneAt)}
+                        </span>
                       )}
                     </div>
                     <form action={toggleOrderMilestoneAction.bind(null, order.id, field)}>
                       <button
                         type="submit"
-                        className={`text-xs px-3 py-1 rounded ${
+                        className={
                           doneAt
-                            ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                            : "bg-blue-600 text-white hover:bg-blue-700"
-                        }`}
+                            ? "gp-btn gp-btn-secondary gp-btn-sm"
+                            : "gp-btn gp-btn-primary gp-btn-sm"
+                        }
                       >
                         {doneAt ? "Undo" : "Mark done"}
                       </button>
@@ -146,23 +146,29 @@ export default async function OrdersPage() {
               })}
             </ul>
 
-            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center gap-4 flex-wrap">
+            <div className="mt-4 pt-4 border-t-2 border-ink/10 flex justify-between items-center gap-4 flex-wrap">
               <form action={toggleStuckInDeliveryAction.bind(null, order.id)}>
-                <button type="submit" className="text-xs text-orange-700 hover:underline">
+                <button type="submit" className="text-xs font-semibold text-gold-dark hover:underline">
                   {order.stuckInDelivery ? "Clear stuck-in-delivery" : "Mark stuck in delivery"}
                 </button>
               </form>
 
               {!order.redAlert && (
-                <form action={setRedAlertAction} className="flex gap-2 items-center flex-1 min-w-[240px]">
+                <form
+                  action={setRedAlertAction}
+                  className="flex gap-2 items-center flex-1 min-w-[240px]"
+                >
                   <input type="hidden" name="orderId" value={order.id} />
                   <input
                     type="text"
                     name="redAlertNote"
                     placeholder="What's wrong?"
-                    className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs"
+                    className="gp-input flex-1 py-1 text-xs"
                   />
-                  <button type="submit" className="text-xs text-red-700 hover:underline whitespace-nowrap">
+                  <button
+                    type="submit"
+                    className="text-xs font-semibold text-coral-dark hover:underline whitespace-nowrap"
+                  >
                     Raise red alert
                   </button>
                 </form>

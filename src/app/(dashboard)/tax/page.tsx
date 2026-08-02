@@ -30,49 +30,51 @@ export default async function TaxPage() {
 
   return (
     <div className="p-8 max-w-2xl">
-      <h1 className="text-3xl font-bold">Tax Documents</h1>
-      <p className="text-gray-600 mt-2">
+      <h1 className="text-3xl font-extrabold">Tax Documents</h1>
+      <p className="text-ink-muted mt-2">
         Your confirmed income updates here automatically as payouts are recorded.
       </p>
 
-      <div className="mt-8 bg-white rounded shadow-sm p-6">
-        <h2 className="font-semibold">Income by year</h2>
+      <div className="gp-card mt-8 p-6">
+        <h2 className="font-extrabold">Income by year</h2>
         {years.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-2">No confirmed payouts yet.</p>
+          <p className="text-sm text-ink-muted mt-2">No confirmed payouts yet.</p>
         ) : (
-          <ul className="mt-3 divide-y divide-gray-100">
+          <ul className="mt-3 divide-y divide-ink/10">
             {years.map((year) => (
-              <li key={year} className="flex justify-between items-center py-2 gap-4">
-                <span className="text-sm text-gray-500 w-16">{year}</span>
-                <span className="font-medium flex-1">
+              <li key={year} className="flex justify-between items-center py-2.5 gap-4">
+                <span className="text-sm text-ink-muted w-16">{year}</span>
+                <span className="font-bold flex-1">
                   ${totalsByYear.get(year)!.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </span>
                 {w9 ? (
                   <a
                     href={`/api/tax/1099/${user.id}/${year}`}
-                    className="text-sm text-blue-600 hover:underline whitespace-nowrap"
+                    className="gp-btn gp-btn-secondary gp-btn-sm whitespace-nowrap"
                   >
                     Download 1099-NEC
                   </a>
                 ) : (
-                  <span className="text-sm text-gray-400 whitespace-nowrap">Submit your W-9</span>
+                  <span className="text-sm text-ink-muted whitespace-nowrap">
+                    Submit your W-9
+                  </span>
                 )}
               </li>
             ))}
           </ul>
         )}
-        <p className="text-xs text-gray-400 mt-4">
+        <p className="text-xs text-ink-muted mt-4">
           These are generated for recordkeeping and are not automatically filed with the IRS.
           Confirm with your tax professional or filing software before submitting.
         </p>
       </div>
 
-      <div className="mt-8 bg-white rounded shadow-sm p-6">
-        <h2 className="font-semibold">
-          W-9 {w9 && <span className="text-green-700 text-sm font-normal ml-1">on file</span>}
+      <div className="gp-card mt-8 p-6">
+        <h2 className="font-extrabold">
+          W-9 {w9 && <span className="gp-badge gp-badge-mint ml-2">on file</span>}
         </h2>
         {w9 && (
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-ink-muted mt-2">
             SSN/EIN ending in {w9.tinLast4} · last updated{" "}
             {w9.updatedAt.toLocaleDateString("en-US")}. Fill out the form below to change it.
           </p>
@@ -81,37 +83,33 @@ export default async function TaxPage() {
         <form action={submitW9Action} className="mt-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Legal name</label>
+              <label className="gp-label">Legal name</label>
               <input
                 name="legalName"
                 type="text"
                 required
                 defaultValue={w9?.legalName}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                className="gp-input"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Business name (optional)
-              </label>
+              <label className="gp-label">Business name (optional)</label>
               <input
                 name="businessName"
                 type="text"
                 defaultValue={w9?.businessName ?? ""}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                className="gp-input"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Federal tax classification
-            </label>
+            <label className="gp-label">Federal tax classification</label>
             <select
               name="taxClassification"
               required
               defaultValue={w9?.taxClassification ?? ""}
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+              className="gp-input"
             >
               <option value="" disabled>
                 Select one
@@ -125,65 +123,60 @@ export default async function TaxPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              SSN or EIN {w9 && "(re-enter to update)"}
-            </label>
+            <label className="gp-label">SSN or EIN {w9 && "(re-enter to update)"}</label>
             <input
               name="tin"
               type="text"
               required
               placeholder="XXX-XX-XXXX or XX-XXXXXXX"
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+              className="gp-input"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Address</label>
+            <label className="gp-label">Address</label>
             <input
               name="address"
               type="text"
               required
               defaultValue={w9?.address}
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+              className="gp-input"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">City</label>
+              <label className="gp-label">City</label>
               <input
                 name="city"
                 type="text"
                 required
                 defaultValue={w9?.city}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                className="gp-input"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">State</label>
+              <label className="gp-label">State</label>
               <input
                 name="state"
                 type="text"
                 required
                 defaultValue={w9?.state}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                className="gp-input"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">ZIP</label>
+              <label className="gp-label">ZIP</label>
               <input
                 name="zipCode"
                 type="text"
                 required
                 defaultValue={w9?.zipCode}
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                className="gp-input"
               />
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
+          <button type="submit" className="gp-btn gp-btn-primary">
             {w9 ? "Update W-9" : "Submit W-9"}
           </button>
         </form>

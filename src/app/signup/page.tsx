@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { signUpAction } from "@/lib/auth-actions";
+import { SignupWizard } from "./SignupWizard";
 
 export default async function SignupPage({
   searchParams,
@@ -10,57 +10,22 @@ export default async function SignupPage({
 
   return (
     <div className="flex min-h-full flex-1 items-center justify-center p-8">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-center mb-8">Sales Dashboard</h1>
-        <form action={signUpAction} className="space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-              Name
-            </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              required
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-            />
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gold border-2 border-ink shadow-brutal-sm text-2xl mb-4">
+            💸
           </div>
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              minLength={6}
-              className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
-            />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Sign up
-          </button>
-        </form>
-        <p className="mt-4 text-sm text-center text-gray-600">
+          <h1 className="text-3xl font-extrabold">Get Started</h1>
+          <p className="text-ink-muted mt-1">Set up your sales account in a minute.</p>
+        </div>
+
+        <div className="gp-card p-6 sm:p-8">
+          <SignupWizard error={error} />
+        </div>
+
+        <p className="mt-6 text-sm text-center text-ink-muted">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:underline">
+          <Link href="/login" className="text-violet font-semibold hover:underline">
             Sign in
           </Link>
         </p>

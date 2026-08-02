@@ -11,15 +11,16 @@ export default async function UsersPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold">Manage Users</h1>
-      <p className="text-gray-600 mt-2">Promote sales reps to admin, or step admins back down.</p>
+      <h1 className="text-3xl font-extrabold">Manage Users</h1>
+      <p className="text-ink-muted mt-2">Promote sales reps to admin, or step admins back down.</p>
 
-      <div className="mt-6 overflow-x-auto">
-        <table className="min-w-full bg-white rounded shadow-sm">
+      <div className="gp-card mt-6 overflow-x-auto">
+        <table className="min-w-full">
           <thead>
-            <tr className="text-left text-sm text-gray-500 border-b">
+            <tr className="text-left text-xs font-bold uppercase tracking-wide text-ink-muted border-b-2 border-ink">
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Org</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">W-9</th>
               <th className="px-4 py-3">1099-NEC</th>
@@ -33,35 +34,36 @@ export default async function UsersPage() {
               );
 
               return (
-                <tr key={u.id} className="border-b last:border-0">
-                  <td className="px-4 py-3">{u.name}</td>
+                <tr key={u.id} className="border-b border-ink/10 last:border-0">
+                  <td className="px-4 py-3 font-semibold">{u.name}</td>
                   <td className="px-4 py-3">{u.email}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {u.organization ?? <span className="text-ink-muted">Independent</span>}
+                  </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        u.role === "ADMIN"
-                          ? "bg-purple-100 text-purple-800"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
+                      className={`gp-badge ${u.role === "ADMIN" ? "gp-badge-violet" : "gp-badge-neutral"}`}
                     >
                       {u.role}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
                     {u.w9Form ? (
-                      <span className="text-green-700">On file (•••{u.w9Form.tinLast4})</span>
+                      <span className="text-mint-dark font-medium">
+                        On file (•••{u.w9Form.tinLast4})
+                      </span>
                     ) : (
-                      <span className="text-gray-400">Not submitted</span>
+                      <span className="text-ink-muted">Not submitted</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm space-x-2">
-                    {years.length === 0 && <span className="text-gray-400">No payouts</span>}
+                    {years.length === 0 && <span className="text-ink-muted">No payouts</span>}
                     {u.w9Form &&
                       years.map((year) => (
                         <a
                           key={year}
                           href={`/api/tax/1099/${u.id}/${year}`}
-                          className="text-blue-600 hover:underline"
+                          className="text-violet font-semibold hover:underline"
                         >
                           {year}
                         </a>
@@ -69,7 +71,7 @@ export default async function UsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     {u.id === admin.id ? (
-                      <span className="text-sm text-gray-400">You</span>
+                      <span className="text-sm text-ink-muted">You</span>
                     ) : (
                       <form action={updateUserRoleAction}>
                         <input type="hidden" name="userId" value={u.id} />
@@ -78,7 +80,7 @@ export default async function UsersPage() {
                           name="role"
                           value={u.role === "ADMIN" ? "SALES_REP" : "ADMIN"}
                         />
-                        <button type="submit" className="text-sm text-blue-600 hover:underline">
+                        <button type="submit" className="gp-btn gp-btn-secondary gp-btn-sm">
                           {u.role === "ADMIN" ? "Revoke admin" : "Make admin"}
                         </button>
                       </form>

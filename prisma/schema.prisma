@@ -29,12 +29,13 @@ enum UserRole {
 // Mirrors auth.users (id is a Supabase Auth user id); rows are created by the
 // handle_new_user trigger on signup, never inserted directly by the app.
 model User {
-  id        String   @id @db.Uuid
-  email     String   @unique
-  name      String
-  role      UserRole @default(SALES_REP)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @db.Uuid
+  email        String   @unique
+  name         String
+  role         UserRole @default(SALES_REP)
+  organization String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   leads   Lead[]
   payouts Payout[]

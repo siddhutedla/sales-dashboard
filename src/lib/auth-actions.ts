@@ -18,15 +18,22 @@ export async function signInAction(formData: FormData) {
 }
 
 export async function signUpAction(formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
+  const firstName = String(formData.get("firstName") ?? "").trim();
+  const lastName = String(formData.get("lastName") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const isIndependent = formData.get("isIndependent") === "true";
+  const organization = isIndependent
+    ? null
+    : String(formData.get("organization") ?? "").trim() || null;
+
+  const name = [firstName, lastName].filter(Boolean).join(" ").trim();
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } },
+    options: { data: { name, organization } },
   });
 
   if (error) {

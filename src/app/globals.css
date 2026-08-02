@@ -1,26 +1,197 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-cream: #fffaf0;
+  --color-surface: #ffffff;
+  --color-ink: #18131f;
+  --color-ink-muted: #6b6478;
+  --color-gold: #ffc53d;
+  --color-gold-dark: #e8a400;
+  --color-violet: #6c5ce7;
+  --color-violet-dark: #5847d1;
+  --color-coral: #ff5a5f;
+  --color-coral-dark: #e14045;
+  --color-mint: #06d6a0;
+  --color-mint-dark: #05b088;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--color-cream);
+  --color-foreground: var(--color-ink);
+  --color-cream: var(--color-cream);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-gold: var(--color-gold);
+  --color-gold-dark: var(--color-gold-dark);
+  --color-violet: var(--color-violet);
+  --color-violet-dark: var(--color-violet-dark);
+  --color-coral: var(--color-coral);
+  --color-coral-dark: var(--color-coral-dark);
+  --color-mint: var(--color-mint);
+  --color-mint-dark: var(--color-mint-dark);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility shadow-brutal {
+  box-shadow: 4px 4px 0 0 var(--color-ink);
+}
+
+@utility shadow-brutal-sm {
+  box-shadow: 2px 2px 0 0 var(--color-ink);
+}
+
+@layer components {
+  .gp-card {
+    background: var(--color-surface);
+    border: 2px solid var(--color-ink);
+    border-radius: 1rem;
+    box-shadow: 4px 4px 0 0 var(--color-ink);
+  }
+
+  .gp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 0.75rem;
+    font-weight: 600;
+    padding: 0.55rem 1.1rem;
+    box-shadow: 3px 3px 0 0 var(--color-ink);
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.1s ease;
+    white-space: nowrap;
+  }
+  .gp-btn:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 0 var(--color-ink);
+  }
+  .gp-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 0 0 0 0 var(--color-ink);
+  }
+  .gp-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 3px 3px 0 0 var(--color-ink);
+  }
+
+  .gp-btn-sm {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 0.6rem;
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+  }
+  .gp-btn-sm:hover {
+    box-shadow: 3px 3px 0 0 var(--color-ink);
+  }
+
+  .gp-btn-primary {
+    background: var(--color-gold);
+    color: var(--color-ink);
+  }
+  .gp-btn-primary:hover {
+    background: var(--color-gold-dark);
+  }
+
+  .gp-btn-secondary {
+    background: var(--color-surface);
+    color: var(--color-ink);
+  }
+  .gp-btn-secondary:hover {
+    background: var(--color-cream);
+  }
+
+  .gp-btn-violet {
+    background: var(--color-violet);
+    color: white;
+    border-color: var(--color-ink);
+  }
+  .gp-btn-violet:hover {
+    background: var(--color-violet-dark);
+  }
+
+  .gp-btn-danger {
+    background: var(--color-coral);
+    color: white;
+  }
+  .gp-btn-danger:hover {
+    background: var(--color-coral-dark);
+  }
+
+  .gp-btn-ghost {
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--color-ink-muted);
+    font-weight: 500;
+  }
+  .gp-btn-ghost:hover {
+    transform: none;
+    box-shadow: none;
+    color: var(--color-ink);
+    background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+  }
+
+  .gp-input {
+    width: 100%;
+    background: var(--color-surface);
+    border: 2px solid var(--color-ink);
+    border-radius: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    color: var(--color-ink);
+  }
+  .gp-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-gold);
+  }
+  .gp-input::placeholder {
+    color: var(--color-ink-muted);
+  }
+
+  .gp-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-ink);
+    margin-bottom: 0.3rem;
+  }
+
+  .gp-badge {
+    display: inline-flex;
+    align-items: center;
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.6rem;
+  }
+  .gp-badge-gold {
+    background: var(--color-gold);
+    color: var(--color-ink);
+  }
+  .gp-badge-violet {
+    background: var(--color-violet);
+    color: white;
+  }
+  .gp-badge-mint {
+    background: var(--color-mint);
+    color: var(--color-ink);
+  }
+  .gp-badge-coral {
+    background: var(--color-coral);
+    color: white;
+  }
+  .gp-badge-neutral {
+    background: var(--color-surface);
+    color: var(--color-ink-muted);
+    border-color: color-mix(in oklab, var(--color-ink) 25%, transparent);
+  }
 }
