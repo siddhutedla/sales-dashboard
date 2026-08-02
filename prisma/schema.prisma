@@ -26,6 +26,15 @@ enum UserRole {
   @@map("user_role")
 }
 
+enum PayoutType {
+  BONUS
+  SALARY
+  COMMISSION
+  OTHER
+
+  @@map("payout_type")
+}
+
 // Mirrors auth.users (id is a Supabase Auth user id); rows are created by the
 // handle_new_user trigger on signup, never inserted directly by the app.
 model User {
@@ -34,6 +43,8 @@ model User {
   name         String
   role         UserRole @default(SALES_REP)
   organization String?
+  hourlyWage   Decimal? @map("hourly_wage") @db.Decimal(10, 2)
+  hoursPerWeek Decimal? @map("hours_per_week") @db.Decimal(5, 2)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -71,6 +82,7 @@ model Lead {
   updatedAt      DateTime   @updatedAt @map("updated_at")
 
   order          Order?
+  payouts        Payout[]
 
   @@index([assignedRepId])
   @@index([status])
@@ -102,15 +114,20 @@ model Order {
 }
 
 model Payout {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  repId       String   @map("rep_id") @db.Uuid
-  rep         User     @relation(fields: [repId], references: [id])
-  amount      Decimal  @db.Decimal(10, 2)
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  repId       String     @map("rep_id") @db.Uuid
+  rep         User       @relation(fields: [repId], references: [id])
+  amount      Decimal    @db.Decimal(10, 2)
   date        DateTime
   description String
-  createdAt   DateTime @default(now()) @map("created_at")
+  type        PayoutType @default(BONUS)
+  leadId      String?    @map("lead_id") @db.Uuid
+  lead        Lead?      @relation(fields: [leadId], references: [id])
+  createdAt   DateTime   @default(now()) @map("created_at")
 
   @@index([repId])
+  @@index([leadId])
+  @@index([type])
   @@map("payouts")
 }
 

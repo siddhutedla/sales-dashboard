@@ -46,6 +46,9 @@ export default async function DashboardLayout({
           <a href="/admin/users" className={navLink}>
             👤 Users
           </a>
+          <a href="/payouts/admin" className={navLink}>
+            💰 Payouts
+          </a>
           <a href="/admin/sync" className={navLink}>
             🔄 Zoho Sync
           </a>

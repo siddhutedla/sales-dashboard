@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireRolePage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateUserRoleAction } from "@/lib/admin-actions";
@@ -35,7 +36,11 @@ export default async function UsersPage() {
 
               return (
                 <tr key={u.id} className="border-b border-ink/10 last:border-0">
-                  <td className="px-4 py-3 font-semibold">{u.name}</td>
+                  <td className="px-4 py-3 font-semibold">
+                    <Link href={`/admin/users/${u.id}`} className="text-violet hover:underline">
+                      {u.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3">{u.email}</td>
                   <td className="px-4 py-3 text-sm">
                     {u.organization ?? <span className="text-ink-muted">Independent</span>}

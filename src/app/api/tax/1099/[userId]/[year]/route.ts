@@ -2,21 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { AuthError, requireUser } from "@/lib/auth";
 import { decryptTin } from "@/lib/tax/crypto";
+import { formatEin, formatTin } from "@/lib/tax/format";
 import { generate1099Pdf } from "@/lib/tax/generate1099";
-
-function formatTin(digits: string, classification: string, truncate: boolean): string {
-  if (truncate) return `XXX-XX-${digits.slice(-4)}`;
-  if (classification === "Individual/Sole Proprietor") {
-    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
-  }
-  return `${digits.slice(0, 2)}-${digits.slice(2)}`;
-}
-
-function formatEin(ein: string): string {
-  const digits = ein.replace(/\D/g, "");
-  if (digits.length !== 9) return ein;
-  return `${digits.slice(0, 2)}-${digits.slice(2)}`;
-}
 
 export async function GET(
   request: NextRequest,

@@ -7,6 +7,11 @@ import {
   toggleStuckInDeliveryAction,
   updateOrderDetailsAction,
 } from "@/lib/order-actions";
+import { createPayoutAction } from "@/lib/payout-actions";
+
+function formatMoney(n: number) {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
 
 const MILESTONES = [
   { field: "emailSentAt", label: "Email Sent", optional: false },
@@ -28,9 +33,18 @@ export default async function OrdersPage() {
 
   const orders = await prisma.order.findMany({
     where: user.role === "ADMIN" ? {} : { lead: { assignedRepId: user.id } },
-    include: { lead: { include: { assignedRep: true } } },
+    include: {
+      lead: {
+        include: {
+          assignedRep: true,
+          payouts: { where: { type: "COMMISSION" }, orderBy: { date: "desc" } },
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
+
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="p-8">
@@ -174,6 +188,62 @@ export default async function OrdersPage() {
                 </form>
               )}
             </div>
+
+            {user.role === "ADMIN" && (
+              <div className="mt-4 pt-4 border-t-2 border-ink/10">
+                {order.lead.payouts.length > 0 && (
+                  <p className="text-xs text-ink-muted mb-2">
+                    Already paid on this deal:{" "}
+                    {order.lead.payouts
+                      .map((p) => `${formatMoney(p.amount.toNumber())} (${p.date.toLocaleDateString("en-US")})`)
+                      .join(", ")}
+                  </p>
+                )}
+                <form
+                  action={createPayoutAction}
+                  className="flex flex-wrap items-end gap-3"
+                >
+                  <input type="hidden" name="repId" value={order.lead.assignedRepId} />
+                  <input type="hidden" name="leadId" value={order.lead.id} />
+                  <input type="hidden" name="type" value="COMMISSION" />
+                  <div>
+                    <label className="gp-label">Payout for this deal</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      name="amount"
+                      placeholder="Amount"
+                      className="gp-input w-32"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="gp-label">Date</label>
+                    <input
+                      type="date"
+                      name="date"
+                      defaultValue={todayStr}
+                      className="gp-input w-40"
+                      required
+                    />
+                  </div>
+                  <div className="flex-1 min-w-[180px]">
+                    <label className="gp-label">Description</label>
+                    <input
+                      type="text"
+                      name="description"
+                      defaultValue={`Commission - ${order.lead.company}`}
+                      className="gp-input"
+                      required
+                    />
+                  </div>
+                  <button type="submit" className="gp-btn gp-btn-violet gp-btn-sm">
+                    Add payout
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         ))}
       </div>
