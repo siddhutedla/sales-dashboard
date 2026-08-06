@@ -31,10 +31,18 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isAuthRoute = path.startsWith("/login") || path.startsWith("/signup");
+  const isAuthRoute =
+    path.startsWith("/login") || path.startsWith("/signup") || path.startsWith("/forgot-password");
   const isApiRoute = path.startsWith("/api");
+  // /auth/confirm exchanges the code and sets the session itself - it must
+  // be reachable while logged out (that's the whole point). /reset-password
+  // is reachable either logged out (mid recovery-code exchange) or logged
+  // in (rotating your password) - it's deliberately not in isAuthRoute, so
+  // a logged-in user landing there via a recovery link isn't bounced to
+  // /dashboard before they can actually set the new password.
+  const isPasswordResetFlow = path.startsWith("/auth/") || path.startsWith("/reset-password");
 
-  if (!user && !isAuthRoute && !isApiRoute) {
+  if (!user && !isAuthRoute && !isApiRoute && !isPasswordResetFlow) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

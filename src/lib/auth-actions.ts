@@ -68,3 +68,47 @@ export async function signOutAction() {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+export async function requestPasswordResetAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (email) {
+    const supabase = await createClient();
+    // The link routes through /auth/confirm first (not straight to
+    // /reset-password) - only a Route Handler can persist the session
+    // cookie from exchanging the code, a page render can't (same reason
+    // as the signup confirmation flow).
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${await getOrigin()}/auth/confirm?next=/reset-password`,
+    });
+  }
+
+  // Same message whether or not the email is registered - otherwise this
+  // becomes a way to check which emails have accounts.
+  redirect(
+    `/login?message=${encodeURIComponent("If that email has an account, a reset link is on its way.")}`
+  );
+}
+
+export async function resetPasswordAction(formData: FormData) {
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (password.length < 6) {
+    redirect(
+      `/reset-password?error=${encodeURIComponent("Password must be at least 6 characters")}`
+    );
+  }
+  if (password !== confirmPassword) {
+    redirect(`/reset-password?error=${encodeURIComponent("Passwords don't match")}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    redirect(`/reset-password?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect("/dashboard");
+}
