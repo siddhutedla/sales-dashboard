@@ -3,10 +3,11 @@ import { prisma } from "@/lib/prisma";
 import {
   refreshFromZohoAction,
   retryZohoSyncAction,
+  syncAllOrdersAction,
   updateOrderStatusAction,
 } from "@/lib/order-actions";
 import { createPayoutAction } from "@/lib/payout-actions";
-import { zohoOrderUrl } from "@/lib/zoho/orders";
+import { pullAllOrdersFromZoho, zohoOrderUrl } from "@/lib/zoho/orders";
 import { ZOHO_ORDER_STATUS_OPTIONS, ZOHO_PREORDER_STATUS_OPTIONS } from "@/types/zoho";
 import { DeleteOrderButton } from "./DeleteOrderButton";
 
@@ -28,6 +29,14 @@ function statusBadgeClass(status: string) {
 export default async function OrdersPage() {
   const user = await getCurrentUser();
   if (!user) return null;
+
+  // Pull the latest status for every linked order from Zoho on every page
+  // load - a Zoho hiccup here shouldn't take the whole page down with it.
+  try {
+    await pullAllOrdersFromZoho();
+  } catch (err) {
+    console.error("Auto-sync on page load failed:", err);
+  }
 
   const orders = await prisma.order.findMany({
     where: user.role === "ADMIN" ? {} : { lead: { assignedRepId: user.id } },
@@ -54,6 +63,11 @@ export default async function OrdersPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <form action={syncAllOrdersAction}>
+            <button type="submit" className="gp-btn gp-btn-secondary">
+              🔄 Sync with Zoho
+            </button>
+          </form>
           {user.role === "ADMIN" && (
             <a href="/orders/import" className="gp-btn gp-btn-secondary">
               Import from Zoho
@@ -153,7 +167,6 @@ export default async function OrdersPage() {
                     defaultValue={order.trackingNumber ?? ""}
                     className="gp-input"
                   />
-                  <p className="text-xs text-ink-muted mt-1">Local only - not pushed to Zoho.</p>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="gp-label">Logistics Notes</label>
@@ -202,8 +215,7 @@ export default async function OrdersPage() {
                     </p>
                   )}
                   <p className="text-xs text-ink-muted mb-2">
-                    Manual for now - will auto-calculate from Zoho&apos;s Subtotal Pre-Rush ×
-                    the rep&apos;s % (max 8%) once that field is synced locally.
+                    This will do 8% of the order total. Once Sub-Total is synced from Zoho, this will be auto-calculated.
                   </p>
                   <form action={createPayoutAction} className="flex flex-wrap items-end gap-3">
                     <input type="hidden" name="repId" value={order.lead.assignedRepId} />

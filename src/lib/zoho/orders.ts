@@ -4,12 +4,18 @@ import { zohoClient } from "./client";
 import { findOrCreateContact } from "./contacts";
 import { ZohoApiResponse, ZohoOrderResponse, ZohoSearchResponse } from "@/types/zoho";
 
-function orderStatusPayload(order: Pick<Order, "orderStatus" | "preorderStatus" | "inksoftOrderNumber" | "logisticsNotes">) {
+type OrderStatusFields = Pick<
+  Order,
+  "orderStatus" | "preorderStatus" | "inksoftOrderNumber" | "logisticsNotes" | "trackingNumber"
+>;
+
+function orderStatusPayload(order: OrderStatusFields) {
   return {
     Order_Status: order.orderStatus,
     Preorder_Status: order.preorderStatus,
     Inksoft_Order_Number: order.inksoftOrderNumber || undefined,
     Logistics_Notes: order.logisticsNotes || undefined,
+    Tracking_Number: order.trackingNumber || undefined,
   };
 }
 
@@ -115,10 +121,31 @@ export async function pullOrderFromZoho(order: Order): Promise<void> {
       preorderStatus: zohoOrder.Preorder_Status || order.preorderStatus,
       inksoftOrderNumber: zohoOrder.Inksoft_Order_Number ?? order.inksoftOrderNumber,
       logisticsNotes: zohoOrder.Logistics_Notes ?? order.logisticsNotes,
+      trackingNumber: zohoOrder.Tracking_Number ?? order.trackingNumber,
       zohoSyncedAt: new Date(),
       zohoSyncStatus: "synced",
     },
   });
+}
+
+// Pulls every linked order's latest status from Zoho in one shot - used on
+// every /orders page load and by the manual "Sync with Zoho" button.
+// Individual GETs rather than a single bulk/COQL call: at this order volume
+// it's simpler and avoids needing a broader OAuth scope than what's already
+// granted; worth revisiting with a bulk fetch if order counts grow a lot.
+export async function pullAllOrdersFromZoho(): Promise<void> {
+  const orders = await prisma.order.findMany({ where: { zohoOrderId: { not: null } } });
+  await Promise.allSettled(
+    orders.map((order) =>
+      pullOrderFromZoho(order).catch((err) => {
+        console.error(`Failed to pull order ${order.id} from Zoho:`, err);
+        return prisma.order.update({
+          where: { id: order.id },
+          data: { zohoSyncStatus: "error" },
+        });
+      })
+    )
+  );
 }
 
 export interface ZohoOrderSearchResult {

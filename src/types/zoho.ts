@@ -33,6 +33,7 @@ export interface ZohoOrderResponse {
   Preorder_Status?: string;
   Inksoft_Order_Number?: string;
   Logistics_Notes?: string;
+  Tracking_Number?: string;
   created_time: string;
   modified_time: string;
 }

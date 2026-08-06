@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "./prisma";
 import { requireUser, requireRole } from "./auth";
-import { createZohoOrder, pushOrderStatus, pullOrderFromZoho, getZohoOrder } from "./zoho/orders";
+import {
+  createZohoOrder,
+  pushOrderStatus,
+  pullOrderFromZoho,
+  pullAllOrdersFromZoho,
+  getZohoOrder,
+} from "./zoho/orders";
 import { getContact } from "./zoho/contacts";
 import { zohoClient } from "./zoho/client";
 
@@ -53,6 +59,19 @@ export async function updateOrderStatusAction(formData: FormData) {
     }
   }
 
+  revalidatePath("/orders");
+}
+
+// Manual "Sync with Zoho" button on the Orders page - pulls every linked
+// order's latest status in one go. (The page also does this automatically
+// on every load - see orders/page.tsx.)
+export async function syncAllOrdersAction() {
+  await requireUser();
+  try {
+    await pullAllOrdersFromZoho();
+  } catch (err) {
+    console.error("Sync all orders failed:", err);
+  }
   revalidatePath("/orders");
 }
 
