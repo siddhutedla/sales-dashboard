@@ -45,11 +45,15 @@ export async function findOrCreateContact(lead: Lead): Promise<string> {
     if (existing) return existing.id;
   }
 
-  const createRes = await zohoClient.post<{ data: { id: string }[] }>("/crm/v2/Contacts", {
-    data: [contactPayload(lead)],
-  });
+  const createRes = await zohoClient.post<{ data: { details: { id: string } }[] }>(
+    "/crm/v2/Contacts",
+    { data: [contactPayload(lead)] }
+  );
 
-  const contactId = createRes.data.data[0]?.id;
+  // Zoho's create/update responses nest the new record id under
+  // details.id, not directly on the array item (GET/search responses put
+  // id at the top level instead - the two shapes differ).
+  const contactId = createRes.data.data[0]?.details?.id;
   if (!contactId) throw new Error("Zoho did not return a Contact id");
   return contactId;
 }

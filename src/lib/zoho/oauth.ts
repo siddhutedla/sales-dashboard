@@ -8,18 +8,29 @@ const accountsUrl = process.env.ZOHO_ACCOUNTS_URL || "https://accounts.zoho.com"
 // and pastes it in; this exchanges it once for a long-lived refresh token.
 // Self Client tokens aren't tied to a redirect_uri, so it's omitted here.
 export async function exchangeGrantToken(grantToken: string): Promise<void> {
-  const response = await axios.post(`${accountsUrl}/oauth/v2/token`, null, {
-    params: {
-      grant_type: "authorization_code",
-      client_id: process.env.ZOHO_CLIENT_ID,
-      client_secret: process.env.ZOHO_CLIENT_SECRET,
-      code: grantToken,
-    },
-  });
+  let response;
+  try {
+    response = await axios.post(`${accountsUrl}/oauth/v2/token`, null, {
+      params: {
+        grant_type: "authorization_code",
+        client_id: process.env.ZOHO_CLIENT_ID,
+        client_secret: process.env.ZOHO_CLIENT_SECRET,
+        code: grantToken,
+      },
+    });
+  } catch (err) {
+    // Surface Zoho's actual error body (e.g. "invalid_client") instead of
+    // axios's generic "Request failed with status code 400".
+    const detail =
+      axios.isAxiosError(err) && err.response?.data
+        ? JSON.stringify(err.response.data)
+        : String(err);
+    throw new Error(detail);
+  }
 
-  // Zoho's token endpoint returns HTTP 200 with an {error: "..."} body for
-  // things like an expired/already-used grant token, rather than a non-2xx
-  // status - axios won't treat that as a failure on its own.
+  // Zoho's token endpoint also returns HTTP 200 with an {error: "..."} body
+  // for things like an expired/already-used grant token, rather than a
+  // non-2xx status - axios won't treat that as a failure on its own.
   if (response.data.error || !response.data.refresh_token) {
     throw new Error(response.data.error || "Zoho did not return a refresh token");
   }

@@ -20,7 +20,7 @@ export async function createZohoOrder(lead: Lead, order: Order, rep: User): Prom
   try {
     const zohoContactId = await findOrCreateContact(lead);
 
-    const res = await zohoClient.post<{ data: { id: string }[] }>("/crm/v2/Orders", {
+    const res = await zohoClient.post<{ data: { details: { id: string } }[] }>("/crm/v2/Orders", {
       data: [
         {
           Name: order.name,
@@ -30,7 +30,9 @@ export async function createZohoOrder(lead: Lead, order: Order, rep: User): Prom
       ],
     });
 
-    const zohoOrderId = res.data.data[0]?.id;
+    // See the comment in contacts.ts - create/update responses nest the id
+    // under details.id, not at the top level.
+    const zohoOrderId = res.data.data[0]?.details?.id;
     if (!zohoOrderId) throw new Error("Zoho did not return an Order id");
 
     // Order_Sales_Person is a Zoho user lookup, but individual reps don't
@@ -72,9 +74,15 @@ export async function pushOrderStatus(order: Order): Promise<void> {
   if (!order.zohoOrderId) throw new Error("Order is not linked to Zoho");
 
   try {
-    await zohoClient.put(`/crm/v2/Orders/${order.zohoOrderId}`, {
-      data: [orderStatusPayload(order)],
-    });
+    const res = await zohoClient.put<{ data: { code: string; message?: string }[] }>(
+      `/crm/v2/Orders/${order.zohoOrderId}`,
+      { data: [orderStatusPayload(order)] }
+    );
+    // Zoho can return HTTP 200 with a per-record error code in the body
+    // (e.g. record deleted, invalid field) rather than a non-2xx status.
+    if (res.data.data[0]?.code !== "SUCCESS") {
+      throw new Error(res.data.data[0]?.message || "Zoho rejected the update");
+    }
     await prisma.order.update({
       where: { id: order.id },
       data: { zohoSyncStatus: "synced", zohoSyncedAt: new Date() },

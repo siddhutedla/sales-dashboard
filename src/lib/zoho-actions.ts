@@ -18,7 +18,8 @@ export async function connectZohoAction(formData: FormData) {
     await exchangeGrantToken(grantToken);
   } catch (err) {
     console.error("Zoho grant token exchange failed:", err);
-    redirect("/admin/sync?error=auth_failed");
+    const detail = err instanceof Error ? err.message : String(err);
+    redirect(`/admin/sync?error=auth_failed&detail=${encodeURIComponent(detail)}`);
   }
 
   redirect("/admin/sync?connected=true");

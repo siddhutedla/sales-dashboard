@@ -5,10 +5,10 @@ import { connectZohoAction } from "@/lib/zoho-actions";
 export default async function SyncPage({
   searchParams,
 }: {
-  searchParams: Promise<{ connected?: string; error?: string }>;
+  searchParams: Promise<{ connected?: string; error?: string; detail?: string }>;
 }) {
   await requireRolePage(["ADMIN"]);
-  const { connected, error } = await searchParams;
+  const { connected, error, detail } = await searchParams;
 
   const token = await prisma.zohoToken.findUnique({ where: { id: 1 } });
   const isConnected = !!token;
@@ -28,8 +28,8 @@ export default async function SyncPage({
       )}
       {error === "auth_failed" && (
         <div className="mt-4 bg-coral/10 border-2 border-coral rounded-xl p-3 text-sm font-medium text-coral-dark">
-          Couldn&apos;t connect - the grant token may be expired or already used (they're
-          single-use and expire in minutes). Generate a fresh one and try again.
+          <p>Couldn&apos;t connect.</p>
+          {detail && <p className="mt-1 font-mono text-xs break-all">{detail}</p>}
         </div>
       )}
       {error === "missing_token" && (
