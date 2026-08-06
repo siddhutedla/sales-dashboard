@@ -1,5 +1,6 @@
 import "server-only";
 import { PDFDocument, PDFFont, StandardFonts, rgb } from "pdf-lib";
+import { formatCurrency, wrapText } from "./pdf-helpers";
 
 interface Party {
   name: string;
@@ -17,27 +18,6 @@ export interface Generate1099Params {
   recipient: Party;
   nonemployeeCompensation: number;
   copyLabel: string;
-}
-
-function formatCurrency(n: number) {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
-}
-
-function wrapText(font: PDFFont, text: string, maxWidth: number, size: number): string[] {
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const test = current ? `${current} ${word}` : word;
-    if (current && font.widthOfTextAtSize(test, size) > maxWidth) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = test;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
 }
 
 // Draws a substitute Form 1099-NEC (allowed under IRS Pub. 1179 as long as it

@@ -35,12 +35,51 @@ export default async function AdminPayoutsPage() {
     .filter((p) => p.status === "PENDING")
     .reduce((sum, p) => sum + p.amount.toNumber(), 0);
 
+  const reportYears = Array.from(
+    new Set(payouts.filter((p) => p.status === "PAID").map((p) => p.date.getFullYear()))
+  ).sort((a, b) => b - a);
+
   return (
     <div className="p-8">
       <h1 className="text-3xl font-extrabold">Manage Payouts</h1>
       <p className="text-ink-muted mt-2">
         Every payout across every rep. Add a new one from a rep&apos;s detail page.
       </p>
+
+      <div className="gp-card mt-6 p-6">
+        <h2 className="font-extrabold">Annual reports</h2>
+        <p className="text-sm text-ink-muted mt-1">
+          Your own tax documents - a summary of the 1099s you&apos;ve issued, and an expense report
+          for your accountant.
+        </p>
+        {reportYears.length === 0 ? (
+          <p className="text-sm text-ink-muted mt-3">
+            No paid payouts yet - reports will appear here once you mark some paid.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-ink/10">
+            {reportYears.map((year) => (
+              <li key={year} className="flex justify-between items-center py-2 gap-3 flex-wrap">
+                <span className="text-sm font-medium">{year}</span>
+                <div className="flex gap-2">
+                  <a
+                    href={`/api/tax/1096/${year}`}
+                    className="gp-btn gp-btn-secondary gp-btn-sm"
+                  >
+                    1096 Summary
+                  </a>
+                  <a
+                    href={`/api/tax/expense-report/${year}`}
+                    className="gp-btn gp-btn-secondary gp-btn-sm"
+                  >
+                    Expense Report
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div className="gp-card mt-6 p-6">
         <h2 className="font-extrabold">Totals by rep</h2>
