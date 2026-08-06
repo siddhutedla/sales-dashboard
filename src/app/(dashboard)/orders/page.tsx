@@ -7,7 +7,7 @@ import {
   updateOrderStatusAction,
 } from "@/lib/order-actions";
 import { createPayoutAction } from "@/lib/payout-actions";
-import { pullAllOrdersFromZoho, zohoOrderUrl } from "@/lib/zoho/orders";
+import { pullAllOrdersFromZoho } from "@/lib/zoho/orders";
 import { ZOHO_ORDER_STATUS_OPTIONS, ZOHO_PREORDER_STATUS_OPTIONS } from "@/types/zoho";
 import { DeleteOrderButton } from "./DeleteOrderButton";
 
@@ -100,8 +100,6 @@ export default async function OrdersPage({
 
       <div className="mt-6 space-y-3">
         {orders.map((order) => {
-          const zohoUrl = order.zohoOrderId ? zohoOrderUrl(order.zohoOrderId) : null;
-
           return (
             <details key={order.id} className="gp-card p-0 overflow-hidden">
               <summary className="cursor-pointer p-4 flex justify-between items-center gap-3 flex-wrap select-none">
@@ -213,25 +211,16 @@ export default async function OrdersPage({
                   <button type="submit" className="gp-btn gp-btn-secondary gp-btn-sm">
                     Save &amp; push to Zoho
                   </button>
-                  {order.zohoOrderId && (
-                    <form action={refreshFromZohoAction.bind(null, order.id)}>
-                      <button type="submit" className="gp-btn gp-btn-secondary gp-btn-sm">
-                        Refresh from Zoho
-                      </button>
-                    </form>
-                  )}
-                  {zohoUrl && (
-                    <a
-                      href={zohoUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-semibold text-violet hover:underline"
-                    >
-                      View in Zoho ↗
-                    </a>
-                  )}
                 </div>
               </form>
+
+              {order.zohoOrderId && (
+                <form action={refreshFromZohoAction.bind(null, order.id)} className="mt-2">
+                  <button type="submit" className="gp-btn gp-btn-secondary gp-btn-sm">
+                    Refresh from Zoho
+                  </button>
+                </form>
+              )}
 
               {user.role === "ADMIN" && (
                 <div className="mt-4 pt-4 border-t-2 border-ink/10">
