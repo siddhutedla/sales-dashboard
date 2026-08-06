@@ -26,9 +26,14 @@ function statusBadgeClass(status: string) {
   return "gp-badge-gold";
 }
 
-export default async function OrdersPage() {
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) return null;
+  const { error } = await searchParams;
 
   // Pull the latest status for every linked order from Zoho on every page
   // load - a Zoho hiccup here shouldn't take the whole page down with it.
@@ -79,6 +84,12 @@ export default async function OrdersPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="mt-4 bg-coral/10 border-2 border-coral rounded-xl p-3 text-sm font-medium text-coral-dark">
+          {error}
+        </div>
+      )}
+
       {orders.length === 0 && (
         <div className="gp-card p-8 mt-8 text-center">
           <p className="text-4xl mb-2">📦</p>
@@ -114,10 +125,31 @@ export default async function OrdersPage() {
               <div className="px-6 pb-6 pt-2 border-t-2 border-ink/10">
               {order.zohoSyncStatus === "error" && !order.zohoOrderId && (
                 <div className="mt-4 bg-gold/10 border-2 border-gold rounded-xl p-3 flex justify-between items-start gap-4">
-                  <p className="text-sm font-medium">
-                    This order hasn't synced to Zoho yet.
-                  </p>
+                  <div>
+                    <p className="text-sm font-medium">This order hasn't synced to Zoho yet.</p>
+                    {order.zohoSyncError && (
+                      <p className="text-xs text-ink-muted mt-1 font-mono">{order.zohoSyncError}</p>
+                    )}
+                  </div>
                   <form action={retryZohoSyncAction.bind(null, order.id)}>
+                    <button
+                      type="submit"
+                      className="text-sm font-semibold hover:underline whitespace-nowrap"
+                    >
+                      Retry
+                    </button>
+                  </form>
+                </div>
+              )}
+              {order.zohoSyncStatus === "error" && order.zohoOrderId && (
+                <div className="mt-4 bg-gold/10 border-2 border-gold rounded-xl p-3 flex justify-between items-start gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Last sync with Zoho failed.</p>
+                    {order.zohoSyncError && (
+                      <p className="text-xs text-ink-muted mt-1 font-mono">{order.zohoSyncError}</p>
+                    )}
+                  </div>
+                  <form action={refreshFromZohoAction.bind(null, order.id)}>
                     <button
                       type="submit"
                       className="text-sm font-semibold hover:underline whitespace-nowrap"

@@ -19,6 +19,17 @@ function orderStatusPayload(order: OrderStatusFields) {
   };
 }
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+async function markSyncError(orderId: string, err: unknown) {
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { zohoSyncStatus: "error", zohoSyncError: errorMessage(err) },
+  });
+}
+
 // Creates the real Zoho Order (finding/creating the linked Contact first)
 // for a freshly-created local Lead+Order pair, and stores the resulting
 // Zoho ids back on the Order row so the two stay linked.
@@ -62,14 +73,12 @@ export async function createZohoOrder(lead: Lead, order: Order, rep: User): Prom
         zohoContactId,
         zohoSyncedAt: new Date(),
         zohoSyncStatus: "synced",
+        zohoSyncError: null,
       },
     });
   } catch (error) {
     console.error("Failed to create Zoho order:", error);
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { zohoSyncStatus: "error" },
-    });
+    await markSyncError(order.id, error);
     throw error;
   }
 }
@@ -91,14 +100,11 @@ export async function pushOrderStatus(order: Order): Promise<void> {
     }
     await prisma.order.update({
       where: { id: order.id },
-      data: { zohoSyncStatus: "synced", zohoSyncedAt: new Date() },
+      data: { zohoSyncStatus: "synced", zohoSyncedAt: new Date(), zohoSyncError: null },
     });
   } catch (error) {
     console.error("Failed to push order status to Zoho:", error);
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { zohoSyncStatus: "error" },
-    });
+    await markSyncError(order.id, error);
     throw error;
   }
 }
@@ -108,11 +114,18 @@ export async function pushOrderStatus(order: Order): Promise<void> {
 export async function pullOrderFromZoho(order: Order): Promise<void> {
   if (!order.zohoOrderId) throw new Error("Order is not linked to Zoho");
 
+  // A deleted/nonexistent record returns HTTP 204 with an empty body, not a
+  // 404 - without validateStatus here axios still resolves it as "success",
+  // and res.data is "" (a string), so res.data.data[0] throws a confusing
+  // TypeError instead of a clear "this was deleted in Zoho" message.
   const res = await zohoClient.get<ZohoApiResponse<ZohoOrderResponse>>(
-    `/crm/v2/Orders/${order.zohoOrderId}`
+    `/crm/v2/Orders/${order.zohoOrderId}`,
+    { validateStatus: (s) => s === 200 || s === 204 }
   );
-  const zohoOrder = res.data.data[0];
-  if (!zohoOrder) throw new Error("Order not found in Zoho");
+  const zohoOrder = res.status === 200 ? res.data?.data?.[0] : undefined;
+  if (!zohoOrder) {
+    throw new Error("This order no longer exists in Zoho - it may have been deleted there.");
+  }
 
   await prisma.order.update({
     where: { id: order.id },
@@ -124,6 +137,7 @@ export async function pullOrderFromZoho(order: Order): Promise<void> {
       trackingNumber: zohoOrder.Tracking_Number ?? order.trackingNumber,
       zohoSyncedAt: new Date(),
       zohoSyncStatus: "synced",
+      zohoSyncError: null,
     },
   });
 }
@@ -139,10 +153,7 @@ export async function pullAllOrdersFromZoho(): Promise<void> {
     orders.map((order) =>
       pullOrderFromZoho(order).catch((err) => {
         console.error(`Failed to pull order ${order.id} from Zoho:`, err);
-        return prisma.order.update({
-          where: { id: order.id },
-          data: { zohoSyncStatus: "error" },
-        });
+        return markSyncError(order.id, err);
       })
     )
   );

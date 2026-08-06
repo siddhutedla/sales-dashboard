@@ -112,6 +112,7 @@ model Order {
   zohoContactId      String?   @map("zoho_contact_id")
   zohoSyncedAt       DateTime? @map("zoho_synced_at")
   zohoSyncStatus     String?   @map("zoho_sync_status")
+  zohoSyncError      String?   @map("zoho_sync_error")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 

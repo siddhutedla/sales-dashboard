@@ -108,27 +108,41 @@ export async function refreshFromZohoAction(orderId: string) {
 // Reps can delete their own orders (admins can delete any) - for
 // test entries or ones that went nowhere. Blocked if a payout is already
 // recorded against it, so a commission never silently disappears; the
-// Zoho record (if any) is deleted too on a best-effort basis.
+// Zoho record (if any) is deleted too on a best-effort basis. Failures
+// (including the payout guard) redirect with a visible message instead of
+// throwing into an unhandled error page - a bare "the button failed" isn't
+// actionable.
 export async function deleteOrderAction(orderId: string) {
-  const order = await assertCanEditOrder(orderId);
+  try {
+    const order = await assertCanEditOrder(orderId);
 
-  const payoutCount = await prisma.payout.count({ where: { leadId: order.leadId } });
-  if (payoutCount > 0) {
-    throw new Error("Can't delete - this order has a payout recorded against it");
-  }
-
-  if (order.zohoOrderId) {
-    try {
-      await zohoClient.delete(`/crm/v2/Orders/${order.zohoOrderId}`);
-    } catch (err) {
-      console.error("Failed to delete Zoho order:", err);
+    const payoutCount = await prisma.payout.count({ where: { leadId: order.leadId } });
+    if (payoutCount > 0) {
+      throw new Error(
+        "Can't delete - this order has a payout recorded against it. Remove the payout first."
+      );
     }
-  }
 
-  // Cascades to delete the Order row too (orders.lead_id is ON DELETE CASCADE).
-  await prisma.lead.delete({ where: { id: order.leadId } });
+    if (order.zohoOrderId) {
+      try {
+        await zohoClient.delete(`/crm/v2/Orders/${order.zohoOrderId}`);
+      } catch (err) {
+        // Already gone from Zoho (e.g. deleted there directly) or some
+        // other Zoho hiccup - don't let that block deleting it locally.
+        console.error("Failed to delete Zoho order:", err);
+      }
+    }
+
+    // Cascades to delete the Order row too (orders.lead_id is ON DELETE CASCADE).
+    await prisma.lead.delete({ where: { id: order.leadId } });
+  } catch (err) {
+    console.error("Delete order failed:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    redirect(`/orders?error=${encodeURIComponent(message)}`);
+  }
 
   revalidatePath("/orders");
+  redirect("/orders");
 }
 
 // Admin-only: attaches an order that already exists in Zoho (created
