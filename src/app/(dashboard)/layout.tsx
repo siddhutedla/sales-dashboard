@@ -24,9 +24,6 @@ export default async function DashboardLayout({
           <a href="/dashboard" className={navLink}>
             📊 Dashboard
           </a>
-          <a href="/leads" className={navLink}>
-            🎯 Leads
-          </a>
           <a href="/payouts" className={navLink}>
             💰 Payouts
           </a>

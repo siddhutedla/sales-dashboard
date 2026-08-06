@@ -82,9 +82,6 @@ model Lead {
   notes          String?
   assignedRepId  String     @map("assigned_rep_id") @db.Uuid
   assignedRep    User       @relation(fields: [assignedRepId], references: [id])
-  zohoLeadId     String?    @unique @map("zoho_lead_id")
-  zohoSyncedAt   DateTime?  @map("zoho_synced_at")
-  zohoSyncStatus String?    @map("zoho_sync_status")
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
 
@@ -93,30 +90,32 @@ model Lead {
 
   @@index([assignedRepId])
   @@index([status])
-  @@index([zohoLeadId])
   @@map("leads")
 }
 
 // Auto-created (via the on_lead_won trigger) the moment a Lead's status
-// flips to WON; tracks fulfillment through the print vendor (Inksoft).
+// flips to WON. This is the app's mirror of a record in Zoho's custom
+// "Orders" module (the real system of record order managers work in) -
+// orderStatus/preorderStatus intentionally use Zoho's exact picklist
+// values so the two stay in lockstep.
 model Order {
-  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  leadId                 String    @unique @map("lead_id") @db.Uuid
-  lead                   Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  inksoftOrderNumber     String?   @map("inksoft_order_number")
-  emailSentAt            DateTime? @map("email_sent_at")
-  blanksShippedAt        DateTime? @map("blanks_shipped_at")
-  mockupApprovedAt       DateTime? @map("mockup_approved_at")
-  paymentSentToPrinterAt DateTime? @map("payment_sent_to_printer_at")
-  orderShippedAt         DateTime? @map("order_shipped_at")
-  trackingNumber         String?   @map("tracking_number")
-  itemsReceivedAt        DateTime? @map("items_received_at")
-  redAlert               Boolean   @default(false) @map("red_alert")
-  redAlertNote           String?   @map("red_alert_note")
-  stuckInDelivery        Boolean   @default(false) @map("stuck_in_delivery")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  leadId             String    @unique @map("lead_id") @db.Uuid
+  lead               Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  name               String
+  inksoftOrderNumber String?   @map("inksoft_order_number")
+  trackingNumber     String?   @map("tracking_number")
+  orderStatus        String    @default("TODO: fill inksoft Order Number") @map("order_status")
+  preorderStatus     String    @default("Collecting Details and Making PO/Order") @map("preorder_status")
+  logisticsNotes     String?   @map("logistics_notes")
+  zohoOrderId        String?   @unique @map("zoho_order_id")
+  zohoContactId      String?   @map("zoho_contact_id")
+  zohoSyncedAt       DateTime? @map("zoho_synced_at")
+  zohoSyncStatus     String?   @map("zoho_sync_status")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
+  @@index([zohoOrderId])
   @@map("orders")
 }
 
