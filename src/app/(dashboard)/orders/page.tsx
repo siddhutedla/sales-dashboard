@@ -8,6 +8,7 @@ import {
 import { createPayoutAction } from "@/lib/payout-actions";
 import { zohoOrderUrl } from "@/lib/zoho/orders";
 import { ZOHO_ORDER_STATUS_OPTIONS, ZOHO_PREORDER_STATUS_OPTIONS } from "@/types/zoho";
+import { DeleteOrderButton } from "./DeleteOrderButton";
 
 function formatMoney(n: number) {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -246,6 +247,10 @@ export default async function OrdersPage() {
                   </form>
                 </div>
               )}
+
+              <div className="mt-4 pt-4 border-t-2 border-ink/10 flex justify-end">
+                <DeleteOrderButton orderId={order.id} orderName={order.name} />
+              </div>
               </div>
             </details>
           );

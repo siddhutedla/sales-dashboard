@@ -6,6 +6,7 @@ import { prisma } from "./prisma";
 import { requireUser, requireRole } from "./auth";
 import { createZohoOrder, pushOrderStatus, pullOrderFromZoho, getZohoOrder } from "./zoho/orders";
 import { getContact } from "./zoho/contacts";
+import { zohoClient } from "./zoho/client";
 
 async function assertCanEditOrder(orderId: string) {
   const user = await requireUser();
@@ -81,6 +82,32 @@ export async function refreshFromZohoAction(orderId: string) {
   } catch (err) {
     console.error("Refresh from Zoho failed:", err);
   }
+
+  revalidatePath("/orders");
+}
+
+// Reps can delete their own orders (admins can delete any) - for
+// test entries or ones that went nowhere. Blocked if a payout is already
+// recorded against it, so a commission never silently disappears; the
+// Zoho record (if any) is deleted too on a best-effort basis.
+export async function deleteOrderAction(orderId: string) {
+  const order = await assertCanEditOrder(orderId);
+
+  const payoutCount = await prisma.payout.count({ where: { leadId: order.leadId } });
+  if (payoutCount > 0) {
+    throw new Error("Can't delete - this order has a payout recorded against it");
+  }
+
+  if (order.zohoOrderId) {
+    try {
+      await zohoClient.delete(`/crm/v2/Orders/${order.zohoOrderId}`);
+    } catch (err) {
+      console.error("Failed to delete Zoho order:", err);
+    }
+  }
+
+  // Cascades to delete the Order row too (orders.lead_id is ON DELETE CASCADE).
+  await prisma.lead.delete({ where: { id: order.leadId } });
 
   revalidatePath("/orders");
 }
