@@ -1,16 +1,28 @@
 import axios from "axios";
 import { prisma } from "../prisma";
 
-export async function exchangeCodeForToken(code: string): Promise<void> {
-  const response = await axios.post("https://accounts.zoho.com/oauth/v2/token", null, {
+const accountsUrl = process.env.ZOHO_ACCOUNTS_URL || "https://accounts.zoho.com";
+
+// Self Client flow - no browser redirect/consent screen. An admin generates
+// a one-time Grant Token directly in Zoho's API Console (Self Client tab)
+// and pastes it in; this exchanges it once for a long-lived refresh token.
+// Self Client tokens aren't tied to a redirect_uri, so it's omitted here.
+export async function exchangeGrantToken(grantToken: string): Promise<void> {
+  const response = await axios.post(`${accountsUrl}/oauth/v2/token`, null, {
     params: {
       grant_type: "authorization_code",
       client_id: process.env.ZOHO_CLIENT_ID,
       client_secret: process.env.ZOHO_CLIENT_SECRET,
-      redirect_uri: process.env.ZOHO_REDIRECT_URI,
-      code,
+      code: grantToken,
     },
   });
+
+  // Zoho's token endpoint returns HTTP 200 with an {error: "..."} body for
+  // things like an expired/already-used grant token, rather than a non-2xx
+  // status - axios won't treat that as a failure on its own.
+  if (response.data.error || !response.data.refresh_token) {
+    throw new Error(response.data.error || "Zoho did not return a refresh token");
+  }
 
   const expiresAt = new Date(Date.now() + response.data.expires_in * 1000);
   await prisma.zohoToken.upsert({
@@ -38,7 +50,7 @@ export async function getValidAccessToken(): Promise<string> {
   }
 
   // Refresh token
-  const response = await axios.post("https://accounts.zoho.com/oauth/v2/token", null, {
+  const response = await axios.post(`${accountsUrl}/oauth/v2/token`, null, {
     params: {
       grant_type: "refresh_token",
       client_id: process.env.ZOHO_CLIENT_ID,

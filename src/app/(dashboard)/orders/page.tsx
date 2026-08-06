@@ -14,6 +14,15 @@ function formatMoney(n: number) {
 }
 
 const ATTENTION_STATUSES = new Set(["Red Alert", "Shipped and Stuck in Delivery"]);
+const DONE_STATUSES = new Set(["Items Received by Customer"]);
+const CLOSED_STATUSES = new Set(["Customer Responded - No Order"]);
+
+function statusBadgeClass(status: string) {
+  if (ATTENTION_STATUSES.has(status)) return "gp-badge-coral";
+  if (DONE_STATUSES.has(status)) return "gp-badge-mint";
+  if (CLOSED_STATUSES.has(status)) return "gp-badge-neutral";
+  return "gp-badge-gold";
+}
 
 export default async function OrdersPage() {
   const user = await getCurrentUser();
@@ -63,29 +72,31 @@ export default async function OrdersPage() {
         </div>
       )}
 
-      <div className="mt-6 space-y-6">
+      <div className="mt-6 space-y-3">
         {orders.map((order) => {
           const zohoUrl = order.zohoOrderId ? zohoOrderUrl(order.zohoOrderId) : null;
-          const needsAttention = ATTENTION_STATUSES.has(order.orderStatus);
 
           return (
-            <div key={order.id} className="gp-card p-6">
-              <div className="flex justify-between items-start flex-wrap gap-2">
+            <details key={order.id} className="gp-card p-0 overflow-hidden">
+              <summary className="cursor-pointer p-4 flex justify-between items-center gap-3 flex-wrap select-none">
                 <div>
-                  <h2 className="text-lg font-extrabold">{order.name}</h2>
-                  <p className="text-sm text-ink-muted">
+                  <span className="font-extrabold">{order.name}</span>
+                  <span className="text-sm text-ink-muted ml-2">
                     {order.lead.company} · {order.lead.name}
                     {user.role === "ADMIN" && ` · ${order.lead.assignedRep.name}`}
-                  </p>
+                  </span>
                 </div>
                 <div className="flex gap-2 items-center">
-                  {needsAttention && <span className="gp-badge gp-badge-coral">{order.orderStatus}</span>}
+                  <span className={`gp-badge ${statusBadgeClass(order.orderStatus)}`}>
+                    {order.orderStatus}
+                  </span>
                   {order.zohoSyncStatus === "error" && (
-                    <span className="gp-badge gp-badge-gold">Zoho sync failed</span>
+                    <span className="gp-badge gp-badge-coral">Zoho sync failed</span>
                   )}
                 </div>
-              </div>
+              </summary>
 
+              <div className="px-6 pb-6 pt-2 border-t-2 border-ink/10">
               {order.zohoSyncStatus === "error" && !order.zohoOrderId && (
                 <div className="mt-4 bg-gold/10 border-2 border-gold rounded-xl p-3 flex justify-between items-start gap-4">
                   <p className="text-sm font-medium">
@@ -189,6 +200,10 @@ export default async function OrdersPage() {
                         .join(", ")}
                     </p>
                   )}
+                  <p className="text-xs text-ink-muted mb-2">
+                    Manual for now - will auto-calculate from Zoho&apos;s Subtotal Pre-Rush ×
+                    the rep&apos;s % (max 8%) once that field is synced locally.
+                  </p>
                   <form action={createPayoutAction} className="flex flex-wrap items-end gap-3">
                     <input type="hidden" name="repId" value={order.lead.assignedRepId} />
                     <input type="hidden" name="leadId" value={order.lead.id} />
@@ -231,7 +246,8 @@ export default async function OrdersPage() {
                   </form>
                 </div>
               )}
-            </div>
+              </div>
+            </details>
           );
         })}
       </div>
