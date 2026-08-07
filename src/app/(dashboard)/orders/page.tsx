@@ -10,6 +10,7 @@ import { createPayoutAction } from "@/lib/payout-actions";
 import { pullAllOrdersFromZoho } from "@/lib/zoho/orders";
 import { ZOHO_ORDER_STATUS_OPTIONS, ZOHO_PREORDER_STATUS_OPTIONS } from "@/types/zoho";
 import { DeleteOrderButton } from "./DeleteOrderButton";
+import { DeletePayoutButton } from "@/components/DeletePayoutButton";
 
 function formatMoney(n: number) {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -225,15 +226,21 @@ export default async function OrdersPage({
               {user.role === "ADMIN" && (
                 <div className="mt-4 pt-4 border-t-2 border-ink/10">
                   {order.lead.payouts.length > 0 && (
-                    <p className="text-xs text-ink-muted mb-2">
-                      Commission on this deal:{" "}
-                      {order.lead.payouts
-                        .map(
-                          (p) =>
-                            `${formatMoney(p.amount.toNumber())} (${p.status === "PAID" ? "paid" : "pending"})`
-                        )
-                        .join(", ")}
-                    </p>
+                    <ul className="mb-3 space-y-1">
+                      {order.lead.payouts.map((p) => (
+                        <li key={p.id} className="flex items-center gap-2 text-xs text-ink-muted">
+                          <span>
+                            Commission: {formatMoney(p.amount.toNumber())} (
+                            {p.status === "PAID" ? "paid" : "pending"})
+                          </span>
+                          <DeletePayoutButton
+                            payoutId={p.id}
+                            description={p.description}
+                            redirectTo="/orders"
+                          />
+                        </li>
+                      ))}
+                    </ul>
                   )}
                   <p className="text-xs text-ink-muted mb-2">
                     This will do 8% of the order total. Once Sub-Total is synced from Zoho, this will be auto-calculated.

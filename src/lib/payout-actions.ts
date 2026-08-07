@@ -81,6 +81,31 @@ export async function togglePayoutStatusAction(payoutId: string, redirectTo?: st
   revalidatePath("/orders");
 }
 
+// Lets an order (or the payout itself, if added in error) actually get
+// deleted afterward - deleteOrderAction refuses to touch an order with a
+// payout still attached, on purpose, so this has to be a separate,
+// deliberate step rather than a cascade.
+export async function deletePayoutAction(payoutId: string, redirectTo?: string) {
+  const fallback = redirectTo || "/admin/users";
+
+  try {
+    await requireRole(["ADMIN"]);
+
+    const payout = await prisma.payout.findUnique({ where: { id: payoutId } });
+    if (!payout) throw new Error("Payout not found");
+
+    await prisma.payout.delete({ where: { id: payoutId } });
+  } catch (err) {
+    redirect(`${fallback}?error=${encodeURIComponent(errorMessage(err))}`);
+  }
+
+  revalidatePath("/admin/users");
+  revalidatePath(fallback);
+  revalidatePath("/payouts/admin");
+  revalidatePath("/payouts");
+  revalidatePath("/orders");
+}
+
 export async function updateRepWageAction(formData: FormData) {
   const repId = String(formData.get("repId") ?? "");
 

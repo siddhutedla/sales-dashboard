@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRolePage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { togglePayoutStatusAction } from "@/lib/payout-actions";
+import { DeletePayoutButton } from "@/components/DeletePayoutButton";
 
 const PAYOUT_TYPE_LABELS: Record<string, string> = {
   BONUS: "Bonus",
@@ -149,6 +150,7 @@ export default async function AdminPayoutsPage({
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Amount</th>
                 <th className="px-4 py-3"></th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -186,6 +188,13 @@ export default async function AdminPayoutsPage({
                         {p.status === "PAID" ? "Mark pending" : "Mark paid"}
                       </button>
                     </form>
+                  </td>
+                  <td className="px-4 py-3">
+                    <DeletePayoutButton
+                      payoutId={p.id}
+                      description={p.description}
+                      redirectTo="/payouts/admin"
+                    />
                   </td>
                 </tr>
               ))}

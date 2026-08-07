@@ -9,6 +9,7 @@ import {
   togglePayoutStatusAction,
   updateRepWageAction,
 } from "@/lib/payout-actions";
+import { DeletePayoutButton } from "@/components/DeletePayoutButton";
 
 const PAYOUT_TYPE_LABELS: Record<string, string> = {
   BONUS: "Bonus",
@@ -322,6 +323,11 @@ export default async function RepDetailPage({
                       {p.status === "PAID" ? "Mark pending" : "Mark paid"}
                     </button>
                   </form>
+                  <DeletePayoutButton
+                    payoutId={p.id}
+                    description={p.description}
+                    redirectTo={`/admin/users/${rep.id}`}
+                  />
                 </div>
               </li>
             ))}
