@@ -242,6 +242,7 @@ export default async function OrdersPage({
                     <input type="hidden" name="repId" value={order.lead.assignedRepId} />
                     <input type="hidden" name="leadId" value={order.lead.id} />
                     <input type="hidden" name="type" value="COMMISSION" />
+                    <input type="hidden" name="redirectTo" value="/orders" />
                     <div>
                       <label className="gp-label">Payout for this deal</label>
                       <input

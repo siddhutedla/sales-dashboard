@@ -3,8 +3,13 @@ import { requireRolePage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateUserRoleAction } from "@/lib/admin-actions";
 
-export default async function UsersPage() {
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const admin = await requireRolePage(["ADMIN"]);
+  const { error } = await searchParams;
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "asc" },
     include: { w9Form: true, payouts: { select: { amount: true, date: true } } },
@@ -14,6 +19,12 @@ export default async function UsersPage() {
     <div className="p-8">
       <h1 className="text-3xl font-extrabold">Manage Users</h1>
       <p className="text-ink-muted mt-2">Promote sales reps to admin, or step admins back down.</p>
+
+      {error && (
+        <div className="mt-4 bg-coral/10 border-2 border-coral rounded-xl p-3 text-sm font-medium text-coral-dark">
+          {error}
+        </div>
+      )}
 
       <div className="gp-card mt-6 overflow-x-auto">
         <table className="min-w-full">

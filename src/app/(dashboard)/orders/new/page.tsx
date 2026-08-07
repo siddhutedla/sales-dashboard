@@ -3,8 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { createLeadAction } from "@/lib/lead-actions";
 import { OrderForm } from "../OrderForm";
 
-export default async function NewOrderPage() {
+export default async function NewOrderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const user = await requireUser();
+  const { error } = await searchParams;
   const isAdmin = user.role === "ADMIN";
 
   const reps = isAdmin
@@ -21,6 +26,11 @@ export default async function NewOrderPage() {
       <p className="text-ink-muted mt-2">
         Enter a new potential order. It's created here and pushed to Zoho right away.
       </p>
+      {error && (
+        <div className="mt-4 bg-coral/10 border-2 border-coral rounded-xl p-3 text-sm font-medium text-coral-dark">
+          {error}
+        </div>
+      )}
       <div className="mt-6">
         <OrderForm
           action={createLeadAction}

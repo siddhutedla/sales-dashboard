@@ -2,8 +2,13 @@ import { requireRolePage } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateCompanySettingsAction } from "@/lib/tax-actions";
 
-export default async function TaxSettingsPage() {
+export default async function TaxSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   await requireRolePage(["ADMIN"]);
+  const { error } = await searchParams;
 
   const settings = await prisma.companySettings.findUnique({ where: { id: 1 } });
 
@@ -13,6 +18,12 @@ export default async function TaxSettingsPage() {
       <p className="text-ink-muted mt-2">
         This is the payer information printed on every generated 1099-NEC.
       </p>
+
+      {error && (
+        <div className="mt-4 bg-coral/10 border-2 border-coral rounded-xl p-3 text-sm font-medium text-coral-dark">
+          {error}
+        </div>
+      )}
 
       <form action={updateCompanySettingsAction} className="gp-card mt-8 p-6 space-y-4">
         <div>

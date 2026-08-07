@@ -6,10 +6,10 @@ import { searchZohoOrdersByName } from "@/lib/zoho/orders";
 export default async function ImportOrderPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; error?: string }>;
 }) {
   await requireRolePage(["ADMIN"]);
-  const { q } = await searchParams;
+  const { q, error } = await searchParams;
 
   const [results, reps] = await Promise.all([
     q ? searchZohoOrdersByName(q) : Promise.resolve([]),
@@ -27,6 +27,12 @@ export default async function ImportOrderPage({
         For orders an order manager already created directly in Zoho - search by Order Name to
         pull one in so it shows up here too.
       </p>
+
+      {error && (
+        <div className="mt-4 bg-coral/10 border-2 border-coral rounded-xl p-3 text-sm font-medium text-coral-dark">
+          {error}
+        </div>
+      )}
 
       <form action="/orders/import" className="mt-6 flex gap-2">
         <input

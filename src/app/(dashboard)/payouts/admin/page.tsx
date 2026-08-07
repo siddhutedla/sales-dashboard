@@ -14,8 +14,13 @@ function formatMoney(n: number) {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
-export default async function AdminPayoutsPage() {
+export default async function AdminPayoutsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   await requireRolePage(["ADMIN"]);
+  const { error } = await searchParams;
 
   const [payouts, reps] = await Promise.all([
     prisma.payout.findMany({
@@ -45,6 +50,12 @@ export default async function AdminPayoutsPage() {
       <p className="text-ink-muted mt-2">
         Every payout across every rep. Add a new one from a rep&apos;s detail page.
       </p>
+
+      {error && (
+        <div className="mt-4 bg-coral/10 border-2 border-coral rounded-xl p-3 text-sm font-medium text-coral-dark">
+          {error}
+        </div>
+      )}
 
       <div className="gp-card mt-6 p-6">
         <h2 className="font-extrabold">Annual reports</h2>
@@ -170,7 +181,7 @@ export default async function AdminPayoutsPage() {
                   </td>
                   <td className="px-4 py-3 font-bold">{formatMoney(p.amount.toNumber())}</td>
                   <td className="px-4 py-3">
-                    <form action={togglePayoutStatusAction.bind(null, p.id)}>
+                    <form action={togglePayoutStatusAction.bind(null, p.id, "/payouts/admin")}>
                       <button type="submit" className="gp-btn gp-btn-secondary gp-btn-sm">
                         {p.status === "PAID" ? "Mark pending" : "Mark paid"}
                       </button>

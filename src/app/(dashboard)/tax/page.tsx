@@ -12,9 +12,14 @@ const TAX_CLASSIFICATIONS = [
   "Other",
 ];
 
-export default async function TaxPage() {
+export default async function TaxPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) return null;
+  const { error } = await searchParams;
 
   const [w9, payouts] = await Promise.all([
     prisma.w9Form.findUnique({ where: { userId: user.id } }),
@@ -40,6 +45,12 @@ export default async function TaxPage() {
       <p className="text-ink-muted mt-2">
         Your confirmed income updates here automatically as payouts are recorded.
       </p>
+
+      {error && (
+        <div className="mt-4 bg-coral/10 border-2 border-coral rounded-xl p-3 text-sm font-medium text-coral-dark">
+          {error}
+        </div>
+      )}
 
       <div className="gp-card mt-8 p-6">
         <h2 className="font-extrabold">Income by year</h2>

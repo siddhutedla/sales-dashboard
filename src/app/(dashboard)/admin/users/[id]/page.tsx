@@ -23,11 +23,14 @@ function formatMoney(n: number) {
 
 export default async function RepDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   await requireRolePage(["ADMIN"]);
   const { id } = await params;
+  const { error } = await searchParams;
 
   const rep = await prisma.user.findUnique({
     where: { id },
@@ -73,6 +76,12 @@ export default async function RepDetailPage({
       <Link href="/admin/users" className="text-sm text-violet font-semibold hover:underline">
         ← Back to Users
       </Link>
+
+      {error && (
+        <div className="bg-coral/10 border-2 border-coral rounded-xl p-3 text-sm font-medium text-coral-dark">
+          {error}
+        </div>
+      )}
 
       <div>
         <h1 className="text-3xl font-extrabold">{rep.name}</h1>
@@ -186,6 +195,7 @@ export default async function RepDetailPage({
             <form action={createPayoutAction} className="mt-3 flex flex-wrap items-end gap-3">
               <input type="hidden" name="repId" value={rep.id} />
               <input type="hidden" name="type" value="SALARY" />
+              <input type="hidden" name="redirectTo" value={`/admin/users/${rep.id}`} />
               <div>
                 <label className="gp-label">Amount</label>
                 <input
@@ -232,6 +242,7 @@ export default async function RepDetailPage({
         <form action={createPayoutAction} className="mt-4 flex flex-wrap items-end gap-3">
           <input type="hidden" name="repId" value={rep.id} />
           <input type="hidden" name="type" value="BONUS" />
+          <input type="hidden" name="redirectTo" value={`/admin/users/${rep.id}`} />
           <div>
             <label className="gp-label">Amount</label>
             <input
@@ -306,7 +317,7 @@ export default async function RepDetailPage({
                   <span className="font-bold w-20 text-right">
                     {formatMoney(p.amount.toNumber())}
                   </span>
-                  <form action={togglePayoutStatusAction.bind(null, p.id)}>
+                  <form action={togglePayoutStatusAction.bind(null, p.id, `/admin/users/${rep.id}`)}>
                     <button type="submit" className="gp-btn gp-btn-secondary gp-btn-sm">
                       {p.status === "PAID" ? "Mark pending" : "Mark paid"}
                     </button>

@@ -13,6 +13,7 @@ import {
 } from "./zoho/orders";
 import { getContact } from "./zoho/contacts";
 import { zohoClient } from "./zoho/client";
+import { errorMessage } from "./errors";
 
 async function assertCanEditOrder(orderId: string) {
   const user = await requireUser();
@@ -32,25 +33,34 @@ async function assertCanEditOrder(orderId: string) {
 // so order managers see the change there too.
 export async function updateOrderStatusAction(formData: FormData) {
   const orderId = String(formData.get("orderId"));
-  await assertCanEditOrder(orderId);
 
-  const orderStatus = String(formData.get("orderStatus") ?? "").trim();
-  const preorderStatus = String(formData.get("preorderStatus") ?? "").trim();
-  const inksoftOrderNumber = String(formData.get("inksoftOrderNumber") ?? "").trim();
-  const trackingNumber = String(formData.get("trackingNumber") ?? "").trim();
-  const logisticsNotes = String(formData.get("logisticsNotes") ?? "").trim();
+  let order;
+  try {
+    await assertCanEditOrder(orderId);
 
-  const order = await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      orderStatus: orderStatus || undefined,
-      preorderStatus: preorderStatus || undefined,
-      inksoftOrderNumber: inksoftOrderNumber || null,
-      trackingNumber: trackingNumber || null,
-      logisticsNotes: logisticsNotes || null,
-    },
-  });
+    const orderStatus = String(formData.get("orderStatus") ?? "").trim();
+    const preorderStatus = String(formData.get("preorderStatus") ?? "").trim();
+    const inksoftOrderNumber = String(formData.get("inksoftOrderNumber") ?? "").trim();
+    const trackingNumber = String(formData.get("trackingNumber") ?? "").trim();
+    const logisticsNotes = String(formData.get("logisticsNotes") ?? "").trim();
 
+    order = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        orderStatus: orderStatus || undefined,
+        preorderStatus: preorderStatus || undefined,
+        inksoftOrderNumber: inksoftOrderNumber || null,
+        trackingNumber: trackingNumber || null,
+        logisticsNotes: logisticsNotes || null,
+      },
+    });
+  } catch (err) {
+    redirect(`/orders?error=${encodeURIComponent(errorMessage(err))}`);
+  }
+
+  // A Zoho push failure isn't fatal here - the status is already saved
+  // locally, and the order's own "Zoho sync failed" badge (driven by
+  // zohoSyncStatus/zohoSyncError) already surfaces why.
   if (order.zohoOrderId) {
     try {
       await pushOrderStatus(order);
@@ -66,11 +76,12 @@ export async function updateOrderStatusAction(formData: FormData) {
 // order's latest status in one go. (The page also does this automatically
 // on every load - see orders/page.tsx.)
 export async function syncAllOrdersAction() {
-  await requireUser();
   try {
+    await requireUser();
     await pullAllOrdersFromZoho();
   } catch (err) {
     console.error("Sync all orders failed:", err);
+    redirect(`/orders?error=${encodeURIComponent(errorMessage(err))}`);
   }
   revalidatePath("/orders");
 }
@@ -78,13 +89,18 @@ export async function syncAllOrdersAction() {
 // For orders that failed to sync when first created (zohoSyncStatus "error")
 // - retries creating the Zoho Order/Contact from scratch.
 export async function retryZohoSyncAction(orderId: string) {
-  const order = await assertCanEditOrder(orderId);
-  if (order.zohoOrderId) return; // already linked, nothing to retry
-
   try {
-    await createZohoOrder(order.lead, order, order.lead.assignedRep);
+    const order = await assertCanEditOrder(orderId);
+    if (order.zohoOrderId) return; // already linked, nothing to retry
+
+    // Any failure here is already captured on the order itself
+    // (zohoSyncStatus/zohoSyncError) by createZohoOrder - not fatal to the
+    // request, the per-order badge is where this surfaces.
+    await createZohoOrder(order.lead, order, order.lead.assignedRep).catch((err) =>
+      console.error("Retry Zoho sync failed:", err)
+    );
   } catch (err) {
-    console.error("Retry Zoho sync failed:", err);
+    redirect(`/orders?error=${encodeURIComponent(errorMessage(err))}`);
   }
 
   revalidatePath("/orders");
@@ -93,13 +109,15 @@ export async function retryZohoSyncAction(orderId: string) {
 // Pulls the latest Order/Preorder status straight from Zoho - for when an
 // order manager updated it there directly instead of through this app.
 export async function refreshFromZohoAction(orderId: string) {
-  const order = await assertCanEditOrder(orderId);
-  if (!order.zohoOrderId) return;
-
   try {
-    await pullOrderFromZoho(order);
+    const order = await assertCanEditOrder(orderId);
+    if (!order.zohoOrderId) return;
+
+    await pullOrderFromZoho(order).catch((err) =>
+      console.error("Refresh from Zoho failed:", err)
+    );
   } catch (err) {
-    console.error("Refresh from Zoho failed:", err);
+    redirect(`/orders?error=${encodeURIComponent(errorMessage(err))}`);
   }
 
   revalidatePath("/orders");
@@ -137,8 +155,7 @@ export async function deleteOrderAction(orderId: string) {
     await prisma.lead.delete({ where: { id: order.leadId } });
   } catch (err) {
     console.error("Delete order failed:", err);
-    const message = err instanceof Error ? err.message : String(err);
-    redirect(`/orders?error=${encodeURIComponent(message)}`);
+    redirect(`/orders?error=${encodeURIComponent(errorMessage(err))}`);
   }
 
   revalidatePath("/orders");
@@ -151,55 +168,60 @@ export async function deleteOrderAction(orderId: string) {
 // required and Zoho's Order_Sales_Person isn't mappable to one (see
 // src/lib/zoho/orders.ts).
 export async function importOrderAction(formData: FormData) {
-  await requireRole(["ADMIN"]);
+  try {
+    await requireRole(["ADMIN"]);
 
-  const zohoOrderId = String(formData.get("zohoOrderId") ?? "").trim();
-  const assignedRepId = String(formData.get("assignedRepId") ?? "").trim();
-  if (!zohoOrderId || !assignedRepId) {
-    throw new Error("Order and assigned rep are required");
+    const zohoOrderId = String(formData.get("zohoOrderId") ?? "").trim();
+    const assignedRepId = String(formData.get("assignedRepId") ?? "").trim();
+    if (!zohoOrderId || !assignedRepId) {
+      throw new Error("Order and assigned rep are required");
+    }
+
+    const zohoOrder = await getZohoOrder(zohoOrderId);
+    const contactId = zohoOrder.Customer?.id;
+    const contact = contactId ? await getContact(contactId) : null;
+
+    const name =
+      [contact?.First_Name, contact?.Last_Name].filter(Boolean).join(" ") || zohoOrder.Name;
+    const company = contact?.Business_Org || zohoOrder.Name;
+
+    await prisma.$transaction(async (tx) => {
+      const lead = await tx.lead.create({
+        data: {
+          name,
+          company,
+          email: contact?.Email,
+          phone: contact?.Phone,
+          mobile: contact?.Mobile,
+          website: contact?.Website,
+          address: contact?.Mailing_Street,
+          city: contact?.Mailing_City,
+          state: contact?.Mailing_State,
+          zipCode: contact?.Mailing_Zip,
+          country: contact?.Mailing_Country,
+          status: "WON",
+          assignedRepId,
+        },
+      });
+
+      await tx.order.create({
+        data: {
+          leadId: lead.id,
+          name: zohoOrder.Name,
+          orderStatus: zohoOrder.Order_Status || "TODO: fill inksoft Order Number",
+          preorderStatus: zohoOrder.Preorder_Status || "Collecting Details and Making PO/Order",
+          inksoftOrderNumber: zohoOrder.Inksoft_Order_Number,
+          logisticsNotes: zohoOrder.Logistics_Notes,
+          zohoOrderId,
+          zohoContactId: contactId,
+          zohoSyncedAt: new Date(),
+          zohoSyncStatus: "synced",
+        },
+      });
+    });
+  } catch (err) {
+    redirect(`/orders/import?error=${encodeURIComponent(errorMessage(err))}`);
   }
-
-  const zohoOrder = await getZohoOrder(zohoOrderId);
-  const contactId = zohoOrder.Customer?.id;
-  const contact = contactId ? await getContact(contactId) : null;
-
-  const name = [contact?.First_Name, contact?.Last_Name].filter(Boolean).join(" ") || zohoOrder.Name;
-  const company = contact?.Business_Org || zohoOrder.Name;
-
-  await prisma.$transaction(async (tx) => {
-    const lead = await tx.lead.create({
-      data: {
-        name,
-        company,
-        email: contact?.Email,
-        phone: contact?.Phone,
-        mobile: contact?.Mobile,
-        website: contact?.Website,
-        address: contact?.Mailing_Street,
-        city: contact?.Mailing_City,
-        state: contact?.Mailing_State,
-        zipCode: contact?.Mailing_Zip,
-        country: contact?.Mailing_Country,
-        status: "WON",
-        assignedRepId,
-      },
-    });
-
-    await tx.order.create({
-      data: {
-        leadId: lead.id,
-        name: zohoOrder.Name,
-        orderStatus: zohoOrder.Order_Status || "TODO: fill inksoft Order Number",
-        preorderStatus: zohoOrder.Preorder_Status || "Collecting Details and Making PO/Order",
-        inksoftOrderNumber: zohoOrder.Inksoft_Order_Number,
-        logisticsNotes: zohoOrder.Logistics_Notes,
-        zohoOrderId,
-        zohoContactId: contactId,
-        zohoSyncedAt: new Date(),
-        zohoSyncStatus: "synced",
-      },
-    });
-  });
 
   revalidatePath("/orders");
   redirect("/orders");
