@@ -31,7 +31,6 @@ export async function createLeadAction(formData: FormData) {
     }
 
     const assignedRepIdInput = str(formData, "assignedRepId");
-    const valueInput = str(formData, "value");
 
     ({ lead, order } = await prisma.$transaction(async (tx) => {
       const lead = await tx.lead.create({
@@ -40,24 +39,17 @@ export async function createLeadAction(formData: FormData) {
           company,
           email: str(formData, "email"),
           phone: str(formData, "phone"),
-          mobile: str(formData, "mobile"),
-          website: str(formData, "website"),
-          address: str(formData, "address"),
-          city: str(formData, "city"),
-          state: str(formData, "state"),
-          zipCode: str(formData, "zipCode"),
-          country: str(formData, "country"),
           industry: str(formData, "industry"),
-          value: valueInput ? Number(valueInput) : 0,
           status: "WON",
-          source: str(formData, "source"),
-          notes: str(formData, "notes"),
           assignedRepId: user.role === "ADMIN" ? assignedRepIdInput || user.id : user.id,
         },
       });
 
+      // The Notes field goes straight to the Order's logisticsNotes (which
+      // already pushes to Zoho's Logistics_Notes on create/update) rather
+      // than a separate Lead.notes column nothing else reads.
       const order = await tx.order.create({
-        data: { leadId: lead.id, name: orderName },
+        data: { leadId: lead.id, name: orderName, logisticsNotes: str(formData, "notes") },
       });
 
       return { lead, order };

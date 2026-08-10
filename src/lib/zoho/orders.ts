@@ -42,6 +42,11 @@ export async function createZohoOrder(lead: Lead, order: Order, rep: User): Prom
         {
           Name: order.name,
           Customer: { id: zohoContactId },
+          // Order_Sales_Person is a Zoho user lookup, but individual reps
+          // don't have Zoho logins (only a shared "Order Managers" account
+          // exists) - Order_Sales_Manager is a plain text field added for
+          // exactly this, so the rep's name goes there instead.
+          Order_Sales_Manager: rep.name,
           ...orderStatusPayload(order),
         },
       ],
@@ -51,20 +56,6 @@ export async function createZohoOrder(lead: Lead, order: Order, rep: User): Prom
     // under details.id, not at the top level.
     const zohoOrderId = res.data.data[0]?.details?.id;
     if (!zohoOrderId) throw new Error("Zoho did not return an Order id");
-
-    // Order_Sales_Person is a Zoho user lookup, but individual reps don't
-    // have Zoho logins (only a shared "Order Managers" account exists) -
-    // attribute the rep via a Note instead so it's still visible on the record.
-    await zohoClient
-      .post(`/crm/v2/Orders/${zohoOrderId}/Notes`, {
-        data: [
-          {
-            Note_Title: "Submitted via Sales Dashboard",
-            Note_Content: `Entered by ${rep.name} <${rep.email}>`,
-          },
-        ],
-      })
-      .catch((err) => console.error("Failed to attach rep-attribution note:", err));
 
     await prisma.order.update({
       where: { id: order.id },

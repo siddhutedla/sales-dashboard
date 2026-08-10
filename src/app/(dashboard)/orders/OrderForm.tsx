@@ -7,16 +7,7 @@ export interface OrderFormValues {
   company?: string;
   email?: string | null;
   phone?: string | null;
-  mobile?: string | null;
-  website?: string | null;
-  address?: string | null;
-  city?: string | null;
-  state?: string | null;
-  zipCode?: string | null;
-  country?: string | null;
   industry?: string | null;
-  value?: number;
-  source?: string | null;
   notes?: string | null;
   assignedRepId?: string;
 }
@@ -83,40 +74,6 @@ export function OrderForm({
             <label className="gp-label">Phone</label>
             <input name="phone" defaultValue={order?.phone ?? ""} className="gp-input" />
           </div>
-          <div>
-            <label className="gp-label">Mobile</label>
-            <input name="mobile" defaultValue={order?.mobile ?? ""} className="gp-input" />
-          </div>
-          <div>
-            <label className="gp-label">Website</label>
-            <input name="website" defaultValue={order?.website ?? ""} className="gp-input" />
-          </div>
-        </div>
-      </div>
-
-      <div className="gp-card p-6 space-y-4">
-        <h2 className="font-extrabold">Address</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <label className="gp-label">Street address</label>
-            <input name="address" defaultValue={order?.address ?? ""} className="gp-input" />
-          </div>
-          <div>
-            <label className="gp-label">City</label>
-            <input name="city" defaultValue={order?.city ?? ""} className="gp-input" />
-          </div>
-          <div>
-            <label className="gp-label">State</label>
-            <input name="state" defaultValue={order?.state ?? ""} className="gp-input" />
-          </div>
-          <div>
-            <label className="gp-label">ZIP</label>
-            <input name="zipCode" defaultValue={order?.zipCode ?? ""} className="gp-input" />
-          </div>
-          <div>
-            <label className="gp-label">Country</label>
-            <input name="country" defaultValue={order?.country ?? ""} className="gp-input" />
-          </div>
         </div>
       </div>
 
@@ -124,23 +81,8 @@ export function OrderForm({
         <h2 className="font-extrabold">Deal</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="gp-label">Value ($)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              name="value"
-              defaultValue={order?.value ?? ""}
-              className="gp-input"
-            />
-          </div>
-          <div>
             <label className="gp-label">Industry</label>
             <input name="industry" defaultValue={order?.industry ?? ""} className="gp-input" />
-          </div>
-          <div>
-            <label className="gp-label">Source</label>
-            <input name="source" defaultValue={order?.source ?? ""} className="gp-input" />
           </div>
           {isAdmin && (
             <div>
@@ -166,6 +108,9 @@ export function OrderForm({
               rows={3}
               className="gp-input"
             />
+            <p className="text-xs text-ink-muted mt-1">
+              Goes to the order's Logistics Notes in Zoho.
+            </p>
           </div>
         </div>
         <p className="text-xs text-ink-muted">
