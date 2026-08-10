@@ -6,7 +6,8 @@ import {
   syncAllOrdersAction,
   updateOrderStatusAction,
 } from "@/lib/order-actions";
-import { createPayoutAction } from "@/lib/payout-actions";
+import { createPayoutAction, updatePayoutAmountAction } from "@/lib/payout-actions";
+import { COMMISSION_RATE } from "@/lib/constants";
 import { pullAllOrdersFromZoho } from "@/lib/zoho/orders";
 import { ZOHO_ORDER_STATUS_OPTIONS, ZOHO_PREORDER_STATUS_OPTIONS } from "@/types/zoho";
 import { DeleteOrderButton } from "./DeleteOrderButton";
@@ -101,6 +102,10 @@ export default async function OrdersPage({
 
       <div className="mt-6 space-y-3">
         {orders.map((order) => {
+          const subtotalPreRush = order.subtotalPreRush?.toNumber() ?? null;
+          const suggestedCommission =
+            subtotalPreRush !== null ? subtotalPreRush * COMMISSION_RATE : null;
+
           return (
             <details key={order.id} className="gp-card p-0 overflow-hidden">
               <summary className="cursor-pointer p-4 flex justify-between items-center gap-3 flex-wrap select-none">
@@ -226,13 +231,32 @@ export default async function OrdersPage({
               {user.role === "ADMIN" && (
                 <div className="mt-4 pt-4 border-t-2 border-ink/10">
                   {order.lead.payouts.length > 0 && (
-                    <ul className="mb-3 space-y-1">
+                    <ul className="mb-3 space-y-1.5">
                       {order.lead.payouts.map((p) => (
                         <li key={p.id} className="flex items-center gap-2 text-xs text-ink-muted">
-                          <span>
-                            Commission: {formatMoney(p.amount.toNumber())} (
-                            {p.status === "PAID" ? "paid" : "pending"})
-                          </span>
+                          <span>Commission ({p.status === "PAID" ? "paid" : "pending"}):</span>
+                          <form
+                            action={updatePayoutAmountAction}
+                            className="flex items-center gap-1"
+                          >
+                            <input type="hidden" name="payoutId" value={p.id} />
+                            <input type="hidden" name="redirectTo" value="/orders" />
+                            <span>$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              name="amount"
+                              defaultValue={p.amount.toNumber()}
+                              className="gp-input w-24 text-xs py-1"
+                            />
+                            <button
+                              type="submit"
+                              className="font-semibold text-violet hover:underline"
+                            >
+                              Save
+                            </button>
+                          </form>
                           <DeletePayoutButton
                             payoutId={p.id}
                             description={p.description}
@@ -242,9 +266,19 @@ export default async function OrdersPage({
                       ))}
                     </ul>
                   )}
-                  <p className="text-xs text-ink-muted mb-2">
-                    This will do 8% of the order total. Once Sub-Total is synced from Zoho, this will be auto-calculated.
-                  </p>
+
+                  {subtotalPreRush !== null ? (
+                    <p className="text-xs text-ink-muted mb-2">
+                      Subtotal Pre-Rush (from Zoho): {formatMoney(subtotalPreRush)} · suggested
+                      commission at {COMMISSION_RATE * 100}%:{" "}
+                      <span className="font-semibold">{formatMoney(suggestedCommission!)}</span>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-ink-muted mb-2">
+                      Subtotal Pre-Rush hasn&apos;t synced from Zoho yet - once it does, the
+                      amount below auto-fills at {COMMISSION_RATE * 100}% of it.
+                    </p>
+                  )}
                   <form action={createPayoutAction} className="flex flex-wrap items-end gap-3">
                     <input type="hidden" name="repId" value={order.lead.assignedRepId} />
                     <input type="hidden" name="leadId" value={order.lead.id} />
@@ -258,6 +292,7 @@ export default async function OrdersPage({
                         min="0"
                         name="amount"
                         placeholder="Amount"
+                        defaultValue={suggestedCommission?.toFixed(2) ?? ""}
                         className="gp-input w-32"
                         required
                       />

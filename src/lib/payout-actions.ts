@@ -106,6 +106,33 @@ export async function deletePayoutAction(payoutId: string, redirectTo?: string) 
   revalidatePath("/orders");
 }
 
+// Lets an admin correct the amount on a payout that already exists
+// (e.g. the suggested 8% was off, or the subtotal changed since) without
+// having to delete and recreate it.
+export async function updatePayoutAmountAction(formData: FormData) {
+  const payoutId = String(formData.get("payoutId") ?? "");
+  const redirectTo = String(formData.get("redirectTo") ?? "").trim() || "/admin/users";
+
+  try {
+    await requireRole(["ADMIN"]);
+
+    const amount = Number(formData.get("amount"));
+    if (!payoutId || !Number.isFinite(amount) || amount <= 0) {
+      throw new Error("Enter a valid amount");
+    }
+
+    await prisma.payout.update({ where: { id: payoutId }, data: { amount } });
+  } catch (err) {
+    redirect(`${redirectTo}?error=${encodeURIComponent(errorMessage(err))}`);
+  }
+
+  revalidatePath("/admin/users");
+  revalidatePath(redirectTo);
+  revalidatePath("/payouts/admin");
+  revalidatePath("/payouts");
+  revalidatePath("/orders");
+}
+
 export async function updateRepWageAction(formData: FormData) {
   const repId = String(formData.get("repId") ?? "");
 

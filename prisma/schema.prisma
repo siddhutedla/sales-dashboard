@@ -108,6 +108,10 @@ model Order {
   orderStatus        String    @default("TODO: fill inksoft Order Number") @map("order_status")
   preorderStatus     String    @default("Collecting Details and Making PO/Order") @map("preorder_status")
   logisticsNotes     String?   @map("logistics_notes")
+  // Pulled from Zoho's Subtotal_Pre_Rush (currency, one-way Zoho -> here -
+  // it's Zoho-authoritative pricing data, never pushed back). Drives the
+  // suggested 8% commission amount on the Orders page.
+  subtotalPreRush    Decimal?  @map("subtotal_pre_rush") @db.Decimal(12, 2)
   zohoOrderId        String?   @unique @map("zoho_order_id")
   zohoContactId      String?   @map("zoho_contact_id")
   zohoSyncedAt       DateTime? @map("zoho_synced_at")

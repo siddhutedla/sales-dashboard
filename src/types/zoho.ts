@@ -34,6 +34,7 @@ export interface ZohoOrderResponse {
   Inksoft_Order_Number?: string;
   Logistics_Notes?: string;
   Tracking_Number?: string;
+  Subtotal_Pre_Rush?: number;
   created_time: string;
   modified_time: string;
 }

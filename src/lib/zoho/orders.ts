@@ -126,6 +126,7 @@ export async function pullOrderFromZoho(order: Order): Promise<void> {
       inksoftOrderNumber: zohoOrder.Inksoft_Order_Number ?? order.inksoftOrderNumber,
       logisticsNotes: zohoOrder.Logistics_Notes ?? order.logisticsNotes,
       trackingNumber: zohoOrder.Tracking_Number ?? order.trackingNumber,
+      subtotalPreRush: zohoOrder.Subtotal_Pre_Rush ?? order.subtotalPreRush,
       zohoSyncedAt: new Date(),
       zohoSyncStatus: "synced",
       zohoSyncError: null,
