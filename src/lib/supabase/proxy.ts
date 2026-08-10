@@ -39,7 +39,7 @@ export async function updateSession(request: NextRequest) {
   // is reachable either logged out (mid recovery-code exchange) or logged
   // in (rotating your password) - it's deliberately not in isAuthRoute, so
   // a logged-in user landing there via a recovery link isn't bounced to
-  // /dashboard before they can actually set the new password.
+  // /orders before they can actually set the new password.
   const isPasswordResetFlow = path.startsWith("/auth/") || path.startsWith("/reset-password");
 
   if (!user && !isAuthRoute && !isApiRoute && !isPasswordResetFlow) {
@@ -50,7 +50,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/orders";
     return NextResponse.redirect(url);
   }
 

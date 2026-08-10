@@ -21,9 +21,6 @@ export default async function DashboardLayout({
           <h2 className="text-lg font-extrabold leading-tight">Sales Dashboard</h2>
         </div>
         <nav className="space-y-1 flex-1">
-          <a href="/dashboard" className={navLink}>
-            📊 Dashboard
-          </a>
           <a href="/payouts" className={navLink}>
             💰 Payouts
           </a>
@@ -32,9 +29,6 @@ export default async function DashboardLayout({
           </a>
           <a href="/tax" className={navLink}>
             🧾 Tax Documents
-          </a>
-          <a href="/email" className={`${navLink} opacity-50`}>
-            📧 Email (Soon)
           </a>
 
           {user?.role === "ADMIN" && (

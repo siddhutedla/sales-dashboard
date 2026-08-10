@@ -28,7 +28,7 @@ export async function signInAction(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect("/dashboard");
+  redirect("/orders");
 }
 
 export async function signUpAction(formData: FormData) {
@@ -60,7 +60,7 @@ export async function signUpAction(formData: FormData) {
     );
   }
 
-  redirect("/dashboard");
+  redirect("/orders");
 }
 
 export async function signOutAction() {
@@ -110,5 +110,5 @@ export async function resetPasswordAction(formData: FormData) {
     redirect(`/reset-password?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect("/dashboard");
+  redirect("/orders");
 }

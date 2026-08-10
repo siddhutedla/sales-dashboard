@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 // would silently drop it and the session wouldn't survive past this request.
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
-  const next = request.nextUrl.searchParams.get("next") || "/dashboard";
+  const next = request.nextUrl.searchParams.get("next") || "/orders";
 
   if (code) {
     const supabase = await createClient();

@@ -38,6 +38,6 @@ export async function requireRole(allowedRoles: string[]) {
 export async function requireRolePage(allowedRoles: string[]) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!allowedRoles.includes(user.role)) redirect("/dashboard");
+  if (!allowedRoles.includes(user.role)) redirect("/orders");
   return user;
 }
