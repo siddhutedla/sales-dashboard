@@ -230,11 +230,30 @@ export default async function OrdersPage({
 
               {user.role === "ADMIN" && (
                 <div className="mt-4 pt-4 border-t-2 border-ink/10">
-                  {order.lead.payouts.length > 0 && (
-                    <ul className="mb-3 space-y-1.5">
+                  <h3 className="text-sm font-extrabold mb-2">Commission</h3>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted mb-3">
+                    <span>
+                      Subtotal Pre-Rush:{" "}
+                      {subtotalPreRush !== null ? (
+                        <span className="font-semibold text-ink">
+                          {formatMoney(subtotalPreRush)}
+                        </span>
+                      ) : (
+                        "not synced from Zoho yet"
+                      )}
+                    </span>
+                    <span>×</span>
+                    <span className="font-semibold text-ink">{COMMISSION_RATE * 100}%</span>
+                  </div>
+
+                  {order.lead.payouts.length > 0 ? (
+                    <ul className="space-y-1.5 mb-3">
                       {order.lead.payouts.map((p) => (
-                        <li key={p.id} className="flex items-center gap-2 text-xs text-ink-muted">
-                          <span>Commission ({p.status === "PAID" ? "paid" : "pending"}):</span>
+                        <li key={p.id} className="flex items-center gap-2 text-xs">
+                          <span className="text-ink-muted">
+                            Payout to {order.lead.assignedRep.name} (
+                            {p.status === "PAID" ? "paid" : "pending"}):
+                          </span>
                           <form
                             action={updatePayoutAmountAction}
                             className="flex items-center gap-1"
@@ -265,62 +284,69 @@ export default async function OrdersPage({
                         </li>
                       ))}
                     </ul>
-                  )}
-
-                  {subtotalPreRush !== null ? (
-                    <p className="text-xs text-ink-muted mb-2">
-                      Subtotal Pre-Rush (from Zoho): {formatMoney(subtotalPreRush)} · suggested
-                      commission at {COMMISSION_RATE * 100}%:{" "}
-                      <span className="font-semibold">{formatMoney(suggestedCommission!)}</span>
+                  ) : subtotalPreRush !== null ? (
+                    <p className="text-xs text-ink-muted mb-3">
+                      No payout yet - it should have auto-added for{" "}
+                      {order.lead.assignedRep.name} on the next sync. Add one manually below if
+                      it doesn&apos;t.
                     </p>
                   ) : (
-                    <p className="text-xs text-ink-muted mb-2">
-                      Subtotal Pre-Rush hasn&apos;t synced from Zoho yet - once it does, the
-                      amount below auto-fills at {COMMISSION_RATE * 100}% of it.
+                    <p className="text-xs text-ink-muted mb-3">
+                      Once Subtotal Pre-Rush syncs from Zoho, a {COMMISSION_RATE * 100}% payout
+                      is added automatically for {order.lead.assignedRep.name}.
                     </p>
                   )}
-                  <form action={createPayoutAction} className="flex flex-wrap items-end gap-3">
-                    <input type="hidden" name="repId" value={order.lead.assignedRepId} />
-                    <input type="hidden" name="leadId" value={order.lead.id} />
-                    <input type="hidden" name="type" value="COMMISSION" />
-                    <input type="hidden" name="redirectTo" value="/orders" />
-                    <div>
-                      <label className="gp-label">Payout for this deal</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        name="amount"
-                        placeholder="Amount"
-                        defaultValue={suggestedCommission?.toFixed(2) ?? ""}
-                        className="gp-input w-32"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="gp-label">Date</label>
-                      <input
-                        type="date"
-                        name="date"
-                        defaultValue={todayStr}
-                        className="gp-input w-40"
-                        required
-                      />
-                    </div>
-                    <div className="flex-1 min-w-[180px]">
-                      <label className="gp-label">Description</label>
-                      <input
-                        type="text"
-                        name="description"
-                        defaultValue={`Commission - ${order.lead.company}`}
-                        className="gp-input"
-                        required
-                      />
-                    </div>
-                    <button type="submit" className="gp-btn gp-btn-violet gp-btn-sm">
-                      Add payout
-                    </button>
-                  </form>
+
+                  <details>
+                    <summary className="text-xs font-semibold text-violet cursor-pointer">
+                      Add a payout manually
+                    </summary>
+                    <form
+                      action={createPayoutAction}
+                      className="flex flex-wrap items-end gap-3 mt-2"
+                    >
+                      <input type="hidden" name="repId" value={order.lead.assignedRepId} />
+                      <input type="hidden" name="leadId" value={order.lead.id} />
+                      <input type="hidden" name="type" value="COMMISSION" />
+                      <input type="hidden" name="redirectTo" value="/orders" />
+                      <div>
+                        <label className="gp-label">Amount</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          name="amount"
+                          placeholder="Amount"
+                          defaultValue={suggestedCommission?.toFixed(2) ?? ""}
+                          className="gp-input w-32"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="gp-label">Date</label>
+                        <input
+                          type="date"
+                          name="date"
+                          defaultValue={todayStr}
+                          className="gp-input w-40"
+                          required
+                        />
+                      </div>
+                      <div className="flex-1 min-w-[180px]">
+                        <label className="gp-label">Description</label>
+                        <input
+                          type="text"
+                          name="description"
+                          defaultValue={`Commission - ${order.lead.company}`}
+                          className="gp-input"
+                          required
+                        />
+                      </div>
+                      <button type="submit" className="gp-btn gp-btn-violet gp-btn-sm">
+                        Add payout
+                      </button>
+                    </form>
+                  </details>
                 </div>
               )}
 

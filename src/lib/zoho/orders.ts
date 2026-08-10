@@ -3,6 +3,7 @@ import { prisma } from "../prisma";
 import { zohoClient } from "./client";
 import { findOrCreateContact } from "./contacts";
 import { ZohoApiResponse, ZohoOrderResponse, ZohoSearchResponse } from "@/types/zoho";
+import { COMMISSION_RATE } from "../constants";
 
 type OrderStatusFields = Pick<
   Order,
@@ -118,6 +119,9 @@ export async function pullOrderFromZoho(order: Order): Promise<void> {
     throw new Error("This order no longer exists in Zoho - it may have been deleted there.");
   }
 
+  const hadSubtotalBefore = order.subtotalPreRush !== null;
+  const newSubtotal = zohoOrder.Subtotal_Pre_Rush ?? null;
+
   await prisma.order.update({
     where: { id: order.id },
     data: {
@@ -126,10 +130,36 @@ export async function pullOrderFromZoho(order: Order): Promise<void> {
       inksoftOrderNumber: zohoOrder.Inksoft_Order_Number ?? order.inksoftOrderNumber,
       logisticsNotes: zohoOrder.Logistics_Notes ?? order.logisticsNotes,
       trackingNumber: zohoOrder.Tracking_Number ?? order.trackingNumber,
-      subtotalPreRush: zohoOrder.Subtotal_Pre_Rush ?? order.subtotalPreRush,
+      subtotalPreRush: newSubtotal ?? order.subtotalPreRush,
       zohoSyncedAt: new Date(),
       zohoSyncStatus: "synced",
       zohoSyncError: null,
+    },
+  });
+
+  // Auto-add the rep's commission the first time a subtotal shows up - only
+  // then, so a later subtotal change in Zoho never silently overwrites an
+  // amount an admin already deliberately adjusted (updatePayoutAmountAction).
+  if (newSubtotal !== null && !hadSubtotalBefore) {
+    await autoCreateCommission(order.leadId, newSubtotal);
+  }
+}
+
+async function autoCreateCommission(leadId: string, subtotalPreRush: number): Promise<void> {
+  const existing = await prisma.payout.findFirst({ where: { leadId, type: "COMMISSION" } });
+  if (existing) return;
+
+  const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+  if (!lead) return;
+
+  await prisma.payout.create({
+    data: {
+      repId: lead.assignedRepId,
+      leadId: lead.id,
+      amount: subtotalPreRush * COMMISSION_RATE,
+      description: `Commission - ${lead.company}`,
+      date: new Date(),
+      type: "COMMISSION",
     },
   });
 }
