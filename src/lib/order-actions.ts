@@ -9,9 +9,8 @@ import {
   pushOrderStatus,
   pullOrderFromZoho,
   pullAllOrdersFromZoho,
-  getZohoOrder,
+  importZohoOrder,
 } from "./zoho/orders";
-import { getContact } from "./zoho/contacts";
 import { zohoClient } from "./zoho/client";
 import { errorMessage } from "./errors";
 
@@ -162,10 +161,10 @@ export async function deleteOrderAction(orderId: string) {
   redirect("/orders");
 }
 
-// Admin-only: attaches an order that already exists in Zoho (created
-// directly by an order manager) to this app, so its status can be looked
-// up here too. Requires assigning it to a local rep since assignedRepId is
-// required and Zoho's Order_Sales_Person isn't mappable to one (see
+// Admin-only manual import - for Zoho orders with no (or an unrecognised)
+// Order_Sales_Manager, which the automatic discovery in pullAllOrdersFromZoho
+// can't assign on its own. Requires picking a local rep since assignedRepId
+// is required and Zoho's Order_Sales_Person isn't mappable to one (see
 // src/lib/zoho/orders.ts).
 export async function importOrderAction(formData: FormData) {
   try {
@@ -177,48 +176,7 @@ export async function importOrderAction(formData: FormData) {
       throw new Error("Order and assigned rep are required");
     }
 
-    const zohoOrder = await getZohoOrder(zohoOrderId);
-    const contactId = zohoOrder.Customer?.id;
-    const contact = contactId ? await getContact(contactId) : null;
-
-    const name =
-      [contact?.First_Name, contact?.Last_Name].filter(Boolean).join(" ") || zohoOrder.Name;
-    const company = contact?.Business_Org || zohoOrder.Name;
-
-    await prisma.$transaction(async (tx) => {
-      const lead = await tx.lead.create({
-        data: {
-          name,
-          company,
-          email: contact?.Email,
-          phone: contact?.Phone,
-          mobile: contact?.Mobile,
-          website: contact?.Website,
-          address: contact?.Mailing_Street,
-          city: contact?.Mailing_City,
-          state: contact?.Mailing_State,
-          zipCode: contact?.Mailing_Zip,
-          country: contact?.Mailing_Country,
-          status: "WON",
-          assignedRepId,
-        },
-      });
-
-      await tx.order.create({
-        data: {
-          leadId: lead.id,
-          name: zohoOrder.Name,
-          orderStatus: zohoOrder.Order_Status || "TODO: fill inksoft Order Number",
-          preorderStatus: zohoOrder.Preorder_Status || "Collecting Details and Making PO/Order",
-          inksoftOrderNumber: zohoOrder.Inksoft_Order_Number,
-          logisticsNotes: zohoOrder.Logistics_Notes,
-          zohoOrderId,
-          zohoContactId: contactId,
-          zohoSyncedAt: new Date(),
-          zohoSyncStatus: "synced",
-        },
-      });
-    });
+    await importZohoOrder(zohoOrderId, assignedRepId);
   } catch (err) {
     redirect(`/orders/import?error=${encodeURIComponent(errorMessage(err))}`);
   }

@@ -12,6 +12,7 @@ import { pullAllOrdersFromZoho } from "@/lib/zoho/orders";
 import { ZOHO_ORDER_STATUS_OPTIONS, ZOHO_PREORDER_STATUS_OPTIONS } from "@/types/zoho";
 import { DeleteOrderButton } from "./DeleteOrderButton";
 import { DeletePayoutButton } from "@/components/DeletePayoutButton";
+import { formatDate } from "@/lib/utils";
 
 function formatMoney(n: number) {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -66,7 +67,9 @@ export default async function OrdersPage({
         <div>
           <h1 className="text-3xl font-extrabold">Orders</h1>
           <p className="text-ink-muted mt-2">
-            Every order created here is pushed straight into Zoho's Orders module.
+            Every order created here is pushed straight into Zoho&apos;s Orders module, and any
+            order tagged with your name in Zoho&apos;s Order Sales Manager field shows up here
+            automatically.
           </p>
         </div>
         <div className="flex gap-2">
@@ -115,6 +118,9 @@ export default async function OrdersPage({
                     {order.lead.company} · {order.lead.name}
                     {user.role === "ADMIN" && ` · ${order.lead.assignedRep.name}`}
                   </span>
+                  <p className="text-sm font-bold mt-1">
+                    Created {formatDate(order.createdAt)}
+                  </p>
                 </div>
                 <div className="flex gap-2 items-center">
                   <span className={`gp-badge ${statusBadgeClass(order.orderStatus)}`}>

@@ -24,8 +24,9 @@ export default async function ImportOrderPage({
     <div className="p-8 max-w-3xl">
       <h1 className="text-3xl font-extrabold">Import Order from Zoho</h1>
       <p className="text-ink-muted mt-2">
-        For orders an order manager already created directly in Zoho - search by Order Name to
-        pull one in so it shows up here too.
+        Orders with a rep&apos;s name in Zoho&apos;s Order Sales Manager field are picked up automatically
+        on every sync. This is for the rest - search by Order Name to pull one in and assign it
+        to a rep by hand.
       </p>
 
       {error && (

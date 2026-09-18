@@ -1,7 +1,8 @@
 import { Lead, Order, User } from "@prisma/client";
 import { prisma } from "../prisma";
+import { Prisma } from "@prisma/client";
 import { zohoClient } from "./client";
-import { findOrCreateContact } from "./contacts";
+import { findOrCreateContact, getContact } from "./contacts";
 import { ZohoApiResponse, ZohoOrderResponse, ZohoSearchResponse } from "@/types/zoho";
 import { COMMISSION_RATE } from "../constants";
 
@@ -164,12 +165,25 @@ async function autoCreateCommission(leadId: string, subtotalPreRush: number): Pr
   });
 }
 
-// Pulls every linked order's latest status from Zoho in one shot - used on
-// every /orders page load and by the manual "Sync with Zoho" button.
-// Individual GETs rather than a single bulk/COQL call: at this order volume
-// it's simpler and avoids needing a broader OAuth scope than what's already
-// granted; worth revisiting with a bulk fetch if order counts grow a lot.
+// Syncs with Zoho in one shot - used on every /orders page load and by the
+// manual "Sync with Zoho" button:
+//   1. picks up any Zoho orders not linked here yet whose Order_Sales_Manager
+//      names one of our users, and imports them under that rep, so an order
+//      manager tagging an order in Zoho is all it takes for it to show up on
+//      the rep's Orders page (no admin import needed)
+//   2. pulls the latest status for every linked order (including the ones
+//      just imported, which is also what auto-creates their commission)
+// Individual GETs in step 2 rather than a single bulk/COQL call: at this
+// order volume it's simpler and avoids needing a broader OAuth scope than
+// what's already granted; worth revisiting with a bulk fetch if order counts
+// grow a lot.
 export async function pullAllOrdersFromZoho(): Promise<void> {
+  try {
+    await discoverRepOrdersFromZoho();
+  } catch (err) {
+    console.error("Auto-discovering rep orders from Zoho failed:", err);
+  }
+
   const orders = await prisma.order.findMany({ where: { zohoOrderId: { not: null } } });
   await Promise.allSettled(
     orders.map((order) =>
@@ -179,6 +193,134 @@ export async function pullAllOrdersFromZoho(): Promise<void> {
       })
     )
   );
+}
+
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Maps a hand-typed Order_Sales_Manager value to a local user id. Order
+// managers write either the full name ("Nikhil Tailor") or just a first name
+// ("Nathan"), so try an exact full-name match first, then first-name-only.
+// Anything ambiguous (two users with the same name / first name) is left
+// unmatched rather than guessed - a commission landing on the wrong rep is
+// worse than an order waiting for a manual import.
+function matchRepByName(
+  salesManager: string,
+  users: { id: string; name: string }[]
+): string | null {
+  const target = normalizeName(salesManager);
+  if (!target) return null;
+
+  const full = users.filter((u) => normalizeName(u.name) === target);
+  if (full.length === 1) return full[0].id;
+  if (full.length > 1) return null;
+
+  const first = users.filter((u) => normalizeName(u.name).split(" ")[0] === target);
+  return first.length === 1 ? first[0].id : null;
+}
+
+// Lists every Zoho order not yet linked locally and imports the ones whose
+// Order_Sales_Manager resolves to one of our users. Sorted newest-first
+// purely so the most recently created orders land first in a big backlog.
+export async function discoverRepOrdersFromZoho(): Promise<void> {
+  const [users, linked] = await Promise.all([
+    prisma.user.findMany({ select: { id: true, name: true } }),
+    prisma.order.findMany({
+      where: { zohoOrderId: { not: null } },
+      select: { zohoOrderId: true },
+    }),
+  ]);
+  const linkedIds = new Set(linked.map((o) => o.zohoOrderId));
+
+  // Only the fields needed to decide; the full record is fetched on import.
+  const fields = "id,Name,Order_Sales_Manager";
+  for (let page = 1; ; page++) {
+    const res = await zohoClient.get<ZohoApiResponse<ZohoOrderResponse>>("/crm/v2/Orders", {
+      params: { fields, page, per_page: 200, sort_by: "Created_Time", sort_order: "desc" },
+      validateStatus: (s) => s === 200 || s === 204,
+    });
+    const batch = res.status === 200 ? res.data?.data ?? [] : [];
+
+    for (const zohoOrder of batch) {
+      if (linkedIds.has(zohoOrder.id) || !zohoOrder.Order_Sales_Manager) continue;
+      const repId = matchRepByName(zohoOrder.Order_Sales_Manager, users);
+      if (!repId) continue;
+
+      try {
+        await importZohoOrder(zohoOrder.id, repId);
+        linkedIds.add(zohoOrder.id);
+      } catch (err) {
+        // P2002 on zoho_order_id = another concurrent page load imported the
+        // same order first; that's fine, it's linked either way.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+          linkedIds.add(zohoOrder.id);
+          continue;
+        }
+        console.error(`Failed to auto-import Zoho order ${zohoOrder.id}:`, err);
+      }
+    }
+
+    if (!res.data?.info?.more_records) break;
+  }
+}
+
+// Attaches an order that already exists in Zoho (created directly by an
+// order manager) to this app as a WON Lead + Order under the given rep. The
+// Contact's details seed the Lead; the Order's status fields come across
+// as-is. Subtotal_Pre_Rush is deliberately left for the next
+// pullOrderFromZoho so the commission is auto-created through the one
+// existing path.
+export async function importZohoOrder(zohoOrderId: string, assignedRepId: string): Promise<void> {
+  const zohoOrder = await getZohoOrder(zohoOrderId);
+  const contactId = zohoOrder.Customer?.id;
+  const contact = contactId ? await getContact(contactId) : null;
+
+  const name =
+    [contact?.First_Name, contact?.Last_Name].filter(Boolean).join(" ") || zohoOrder.Name;
+  const company = contact?.Business_Org || zohoOrder.Name;
+
+  // Zoho's created_time, not now() - an order imported months after it
+  // was raised in Zoho should still show its real date on the Orders page.
+  const createdInZoho = zohoOrder.created_time ? new Date(zohoOrder.created_time) : null;
+
+  await prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.create({
+      data: {
+        name,
+        company,
+        email: contact?.Email,
+        phone: contact?.Phone,
+        mobile: contact?.Mobile,
+        website: contact?.Website,
+        address: contact?.Mailing_Street,
+        city: contact?.Mailing_City,
+        state: contact?.Mailing_State,
+        zipCode: contact?.Mailing_Zip,
+        country: contact?.Mailing_Country,
+        status: "WON",
+        assignedRepId,
+      },
+    });
+
+    await tx.order.create({
+      data: {
+        leadId: lead.id,
+        name: zohoOrder.Name,
+        createdAt:
+          createdInZoho && !Number.isNaN(createdInZoho.getTime()) ? createdInZoho : undefined,
+        orderStatus: zohoOrder.Order_Status || "TODO: fill inksoft Order Number",
+        preorderStatus: zohoOrder.Preorder_Status || "Collecting Details and Making PO/Order",
+        inksoftOrderNumber: zohoOrder.Inksoft_Order_Number,
+        logisticsNotes: zohoOrder.Logistics_Notes,
+        trackingNumber: zohoOrder.Tracking_Number,
+        zohoOrderId,
+        zohoContactId: contactId,
+        zohoSyncedAt: new Date(),
+        zohoSyncStatus: "synced",
+      },
+    });
+  });
 }
 
 export interface ZohoOrderSearchResult {

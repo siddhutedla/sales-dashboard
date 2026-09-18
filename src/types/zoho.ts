@@ -29,6 +29,9 @@ export interface ZohoOrderResponse {
   id: string;
   Name: string;
   Customer?: { id: string; name?: string } | null;
+  // Plain text rep name (see createZohoOrder) - order managers type it by
+  // hand, so it's often just a first name ("Nathan") rather than a full one.
+  Order_Sales_Manager?: string | null;
   Order_Status?: string;
   Preorder_Status?: string;
   Inksoft_Order_Number?: string;
@@ -61,6 +64,7 @@ export interface ZohoApiResponse<T> {
     count: number;
     page: number;
     per_page: number;
+    more_records?: boolean;
     page_context?: {
       has_more_records: boolean;
     };
